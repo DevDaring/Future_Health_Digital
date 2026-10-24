@@ -1,0 +1,21 @@
+# Screening thresholds. Standard clinical thresholds — verify with clinical advisor.
+# A clinician can edit this file; the generator, the importer and the UI all read it.
+
+DIABETES:
+  test: HbA1c
+  unit: "%"
+  bands:
+    - {min: 5.7, max: 6.5, severity: routine, category: prediabetes}
+    - {min: 6.5, max: 9.0, severity: high, category: diabetes range}
+    - {min: 9.0, max: 99, severity: urgent, category: high}
+
+COLORECTAL:
+  test: FIT (stool test)
+  positive: {severity: high, category: positive}
+
+BREAST:
+  test: Mammogram BI-RADS
+  birads:
+    0: {severity: high, category: recall}
+    4: {severity: high, category: suspicious}
+    5: {severity: urgent, category: highly suspicious}

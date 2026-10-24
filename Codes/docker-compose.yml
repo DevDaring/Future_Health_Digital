@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: wasl
+      POSTGRES_PASSWORD: wasl
+      POSTGRES_DB: wasl
+    volumes: [wasl_db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wasl"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql+psycopg://wasl:wasl@db:5432/wasl
+      CORS_ORIGINS: http://localhost:5173
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8000:8000"]
+    volumes: [wasl_artifacts:/app/artifacts]
+
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports: ["5173:80"]
+
+volumes:
+  wasl_db:
+  wasl_artifacts:

@@ -1,0 +1,11 @@
+# Only the README, the code and the results are published.
+/*
+!/README.md
+!/.gitignore
+!/Codes/
+!/Results/
+# never publish secrets
+.env
+.env.*
+!.env.example
+**/.env.local

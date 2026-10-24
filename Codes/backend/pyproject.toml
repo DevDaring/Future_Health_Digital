@@ -1,0 +1,57 @@
+[project]
+name = "wasl"
+version = "1.0.0"
+description = "WASL (وصل) - AI care navigation that closes the screening-to-care loop"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy>=2.0.30",
+  "alembic>=1.13",
+  "psycopg[binary]>=3.2",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "numpy",
+  "pandas",
+  "scikit-learn>=1.5",
+  "lightgbm>=4.3",
+  "shap",
+  "simpy>=4.1",
+  "apscheduler>=3.10,<4",
+  "pyjwt>=2.8",
+  "passlib[bcrypt]>=1.7.4",
+  "bcrypt==4.0.1",
+  "anthropic>=0.40",
+  "httpx>=0.27",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov", "ruff", "mypy"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true

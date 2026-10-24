@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. Status colours always ship with an icon or text label too. */
+:root {
+  --bg: 244 246 250;
+  --card: 255 255 255;
+  --line: 226 232 240;
+  --ink: 11 19 36;
+  --ink-2: 71 85 105;
+  --ink-3: 148 163 184;
+  --night: 9 15 30;
+  --night-2: 17 27 49;
+  --night-3: 30 44 74;
+  --teal: 13 148 136;
+  --teal-soft: 204 251 241;
+  --teal-ink: 15 118 110;
+  --indigo: 79 70 229;
+  --indigo-soft: 224 231 255;
+  --indigo-ink: 67 56 202;
+  --sand: 202 152 66;
+  --sand-soft: 254 243 199;
+  --sand-ink: 146 98 22;
+  --ok: 5 150 105;
+  --ok-soft: 209 250 229;
+  --warn: 217 119 6;
+  --warn-soft: 254 243 199;
+  --bad: 225 29 72;
+  --bad-soft: 255 228 230;
+  --info: 2 132 199;
+  --info-soft: 224 242 254;
+  --shadow: 15 23 42;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 6 10 20;
+  --card: 13 20 36;
+  --line: 32 44 68;
+  --ink: 236 241 248;
+  --ink-2: 168 182 204;
+  --ink-3: 100 116 139;
+  --teal: 45 212 191;
+  --teal-soft: 17 60 62;
+  --teal-ink: 94 234 212;
+  --indigo: 129 140 248;
+  --indigo-soft: 33 36 84;
+  --indigo-ink: 165 180 252;
+  --sand: 234 179 88;
+  --sand-soft: 66 48 18;
+  --sand-ink: 252 211 77;
+  --ok: 52 211 153;
+  --ok-soft: 10 56 44;
+  --warn: 251 191 36;
+  --warn-soft: 66 46 10;
+  --bad: 251 113 133;
+  --bad-soft: 76 16 34;
+  --info: 56 189 248;
+  --info-soft: 10 46 70;
+  --shadow: 0 0 0;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+body {
+  @apply bg-bg font-sans text-ink antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Script-aware fonts for patient-facing text */
+:lang(ar) { font-family: "Noto Naskh Arabic", "Plus Jakarta Sans Variable", serif; }
+:lang(ur) { font-family: "Noto Nastaliq Urdu", "Noto Naskh Arabic", serif; line-height: 2.1; }
+:lang(ml) { font-family: "Noto Sans Malayalam", "Plus Jakarta Sans Variable", sans-serif; }
+:lang(hi) { font-family: "Noto Sans Devanagari", "Plus Jakarta Sans Variable", sans-serif; }
+:lang(bn) { font-family: "Noto Sans Bengali", "Plus Jakarta Sans Variable", sans-serif; }
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-card shadow-soft;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/60 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-teal to-indigo text-white shadow-glow hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-card text-ink hover:bg-bg;
+  }
+  .btn-dark {
+    @apply btn bg-night text-white hover:bg-night-2 dark:bg-white dark:text-night;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .label {
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-3
+      focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/25;
+  }
+  .skeleton {
+    @apply animate-shimmer rounded-lg bg-[linear-gradient(90deg,rgb(var(--line))_0%,rgb(var(--bg))_50%,rgb(var(--line))_100%)] bg-[length:200%_100%];
+  }
+}
+
+/* 8-point star lattice: a quiet nod to Gulf geometric art on brand surfaces */
+.pattern-stars {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M28 6l6 16 16 6-16 6-6 16-6-16-16-6 16-6z'/%3E%3Crect x='17' y='17' width='22' height='22' transform='rotate(45 28 28)'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  .card { box-shadow: none; break-inside: avoid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

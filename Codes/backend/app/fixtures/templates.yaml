@@ -1,0 +1,85 @@
+# Clinician-approved English master templates (demo content — verify with clinical advisor).
+# The LLM may only simplify, personalise and translate these. It never adds medical facts.
+# Variables: {first_name} {test_name} {value} {value_text} {category} {sla_days}
+#            {clinic_name} {slot_time} {risk_statement}
+approved_by: "Dr. Layla Haddad (demo clinician)"
+
+generic:
+  greeting: "Hello {first_name}. This is WASL, the care navigation service of your health centre. We have your recent screening result, and we are here to help you with the next step."
+  barrier_q: "Is there anything that could make it hard for you to come to the clinic? For example work hours, cost, travel, or worries."
+  time_info: "We understand that work hours can make visits hard. We can offer evening or Friday appointments that fit your shift."
+  cost_info: "Follow-up visits after a screening result are covered by your insurance plan. A small co-payment may apply. Our team can tell you the exact amount before you come, so there are no surprises."
+  transport_info: "We can find a clinic closer to your home or work, so the trip is shorter."
+  fear_info: "It is normal to feel worried. The follow-up visit is to understand your result clearly and to help you early. A nurse can talk with you before the visit if you like."
+  language_info: "We can arrange a clinician or an interpreter who speaks your language."
+  family_info: "You are welcome to bring a family member or a friend with you to the visit."
+  none_barrier: "Thank you. Let us make sure everything is clear before we choose a time."
+  teach_back_q: "To make sure I explained clearly, can you tell me in your own words what the test showed and what you will do next?"
+  teach_back_pass: "Thank you, you explained it well. Now let us choose a time for your visit."
+  teach_back_retry: "Thank you. Let me say it more simply."
+  teach_back_handoff: "Thank you. A member of our team will call you to go over it together. You can still book your visit now."
+  slots_intro: "Here are the appointment times that fit you best. Tap one to book it."
+  booked_confirm: "Your appointment is booked: {slot_time} at {clinic_name}. We will remind you 2 days before and 2 hours before."
+  urgent_care: "What you describe needs care now. Please call 999 or go to the nearest emergency department. A nurse from our team has been alerted and will contact you."
+  human_handoff: "A member of our care team will contact you soon. You can also call your health centre."
+  refusal_risk: "We respect your choice. Before you decide, please know: {risk_statement} Would you still prefer not to have the follow-up visit?"
+  refusal_recorded: "Thank you for telling us. We have recorded your choice and will not contact you again about this result. If you change your mind, reply to this message or call your health centre."
+  reminder_48h: "Reminder: your appointment is in 2 days, {slot_time} at {clinic_name}."
+  reminder_2h: "Reminder: your appointment is in 2 hours at {clinic_name}."
+  ai_paused: "A nurse is reviewing your message and will contact you shortly."
+  interpreter_offer: "If anything is unclear, we can call you with an interpreter who speaks your language."
+
+programs:
+  DIABETES:
+    routine:
+      result_explain: "Your blood sugar test ({test_name}) result is {value}%. This is in the prediabetes range (5.7 to 6.4%). It means your blood sugar is higher than normal, but it is not diabetes. Finding this early is good: changes now can stop diabetes from developing."
+      next_step: "The next step is a short visit with a doctor within {sla_days} days to check your health and plan simple changes."
+      result_simple: "Your sugar test is a little high. It is not diabetes. A doctor visit soon can stop it from getting worse."
+      risk_statement: "without follow-up, prediabetes often turns into diabetes, which can damage the heart, eyes, kidneys and feet."
+    high:
+      result_explain: "Your blood sugar test ({test_name}) result is {value}%. This is in the diabetes range (6.5% or higher). A doctor needs to confirm this and talk with you about care."
+      next_step: "The next step is a doctor visit within {sla_days} days to confirm the result and start a care plan."
+      result_simple: "Your sugar test is high. A doctor needs to see you in the next few weeks."
+      risk_statement: "without follow-up, high blood sugar can slowly damage the heart, eyes, kidneys and feet, often without symptoms."
+    urgent:
+      result_explain: "Your blood sugar test ({test_name}) result is {value}%. This is high (9% or more). It is important that a doctor sees you soon."
+      next_step: "The next step is a doctor visit within {sla_days} days. If you feel very thirsty, pass urine very often, feel confused or very weak, get care today."
+      result_simple: "Your sugar test is very high. Please see a doctor this week."
+      risk_statement: "very high blood sugar needs care soon. Without it, serious problems can happen quickly."
+  COLORECTAL:
+    high:
+      result_explain: "Your stool test ({test_name}) result is positive. This means a small amount of blood was found in the sample. It does not mean you have cancer. Most positive results have other causes, but the cause must be checked."
+      next_step: "The next step is a visit within {sla_days} days to arrange a follow-up test, usually a colonoscopy, which looks inside the bowel."
+      result_simple: "Your stool test found a little blood. We need to check why. Please see the doctor in the next few weeks."
+      risk_statement: "a positive stool test needs a follow-up test to find the cause. Finding problems early makes treatment easier."
+  BREAST:
+    high:
+      result_explain: "Your mammogram result is {value_text}. This means the images need more checks to understand a change that was seen. It does not mean you have cancer."
+      next_step: "The next step is a visit within {sla_days} days for more imaging or a test, so the change can be checked."
+      result_simple: "Your breast X-ray needs more checks. Please come in the next few weeks."
+      risk_statement: "the change on your mammogram must be checked. Checking early gives the most treatment options."
+    urgent:
+      result_explain: "Your mammogram result is {value_text}. A change was seen that needs to be checked quickly. More tests are needed to know what it is."
+      next_step: "The next step is a visit within {sla_days} days for more tests. Our team will help you book quickly."
+      result_simple: "Your breast X-ray shows something that must be checked soon. Please come this week."
+      risk_statement: "this change must be checked quickly. Early checking gives the most treatment options."
+
+test_names:
+  DIABETES: HbA1c
+  COLORECTAL: FIT
+  BREAST: mammogram
+
+# Teach-back rubric (keyword groups, English). All three groups must match to pass.
+teach_back_rubric:
+  DIABETES:
+    understands_result: [sugar, hba1c, glucose, diabetes, prediabetes, "blood test"]
+    knows_next_step: [doctor, clinic, visit, appointment, check, see]
+    knows_when: [soon, week, weeks, days, month, friday, today, tomorrow, within, "next"]
+  COLORECTAL:
+    understands_result: [stool, blood, fit, bowel, positive]
+    knows_next_step: [colonoscopy, test, doctor, visit, check, appointment, clinic]
+    knows_when: [soon, week, weeks, days, month, friday, today, tomorrow, within, "next"]
+  BREAST:
+    understands_result: [mammogram, breast, x-ray, xray, image, change, scan]
+    knows_next_step: [test, imaging, doctor, visit, check, appointment, clinic, scan]
+    knows_when: [soon, week, weeks, days, month, friday, today, tomorrow, within, "next"]

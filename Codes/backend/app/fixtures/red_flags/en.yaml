@@ -1,0 +1,10 @@
+# Red-flag lexicon (English). Matching is case-insensitive substring.
+# Demo fixture — a clinical safety officer must review this list before real use.
+chest_pain: [chest pain, pain in my chest, heart attack, crushing pain]
+breathing: [can't breathe, cannot breathe, short of breath, difficulty breathing, choking]
+bleeding: [bleeding, heavy blood, vomiting blood, blood in vomit, lump that is bleeding]
+fainting: [fainted, fainting, passed out, unconscious, collapsed]
+suicidal: [suicide, suicidal, kill myself, end my life, want to die, self harm, hurt myself]
+hyperglycaemia: [very thirsty and confused, extremely thirsty, sugar is over 400, can't stop urinating, fruity breath]
+neuro: [stroke, face drooping, can't move my arm, seizure, convulsion, slurred speech]
+severe_pain: [severe pain, unbearable pain, worst pain]

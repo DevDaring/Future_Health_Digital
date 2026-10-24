@@ -1,0 +1,57 @@
+# Red-flag lexicon (Arabic, MSA + Gulf phrasing + common romanised spellings).
+# Demo fixture — not clinically validated; a clinical safety officer must review it.
+chest_pain:
+- ألم في صدري
+- ألم في الصدر
+- وجع في صدري
+- صدري يوجعني
+- ضغط على صدري
+- نوبة قلبية
+- جلطة قلبية
+- alam fi sadri
+- sadri yewja3ni
+breathing:
+- لا أستطيع التنفس
+- ما أقدر أتنفس
+- ضيق في التنفس
+- ضيق تنفس
+- أختنق
+- ma agdar atnaffas
+bleeding:
+- نزيف
+- ينزف
+- تنزف
+- كتلة تنزف
+- دم في القيء
+- أتقيأ دم
+- nazeef
+fainting:
+- أغمي علي
+- أغمي عليّ
+- فقدت الوعي
+- سقطت مغشيا
+- إغماء
+- ughmiya alay
+suicidal:
+- أريد أن أنتحر
+- أفكر في الانتحار
+- أبي أنتحر
+- أريد أن أموت
+- أؤذي نفسي
+- أنهي حياتي
+hyperglycaemia:
+- عطش شديد
+- عطشان جدا ومشوش
+- السكر فوق 400
+- أتبول كثيرا جدا
+neuro:
+- جلطة دماغية
+- سكتة دماغية
+- وجهي مائل
+- لا أستطيع تحريك يدي
+- تشنجات
+- كلامي ثقيل
+severe_pain:
+- ألم شديد
+- ألم لا يحتمل
+- أسوأ ألم

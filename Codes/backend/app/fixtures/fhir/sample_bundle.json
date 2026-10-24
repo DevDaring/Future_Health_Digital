@@ -1,0 +1,46 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "hie-pt-7781",
+        "name": [{"given": ["Anwar"], "family": "Hossain"}],
+        "gender": "male",
+        "birthDate": "1979-05-14",
+        "telecom": [{"system": "phone", "value": "+971 50 123 4567"}],
+        "address": [{"district": "Mussafah"}],
+        "communication": [{"language": {"coding": [{"system": "urn:ietf:bcp:47", "code": "bn"}]}}],
+        "extension": [
+          {"url": "https://wasl.demo/fhir/StructureDefinition/nationality-group", "valueString": "Bangladeshi"},
+          {"url": "https://wasl.demo/fhir/StructureDefinition/occupation", "valueString": "construction"},
+          {"url": "https://wasl.demo/fhir/StructureDefinition/shift-pattern", "valueString": "night"},
+          {"url": "https://wasl.demo/fhir/StructureDefinition/insurance-tier", "valueString": "basic"}
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "hie-obs-55120",
+        "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c/Hemoglobin.total in Blood"}]},
+        "subject": {"reference": "Patient/hie-pt-7781"},
+        "effectiveDateTime": "2026-10-20T08:30:00+04:00",
+        "valueQuantity": {"value": 8.2, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "hie-obs-55121",
+        "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "4548-4"}]},
+        "subject": {"reference": "Patient/hie-pt-7781"},
+        "effectiveDateTime": "2025-10-02T08:30:00+04:00",
+        "valueQuantity": {"value": 5.4, "unit": "%"}
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+# Patient twin: yearly transition probabilities per program.
+# ILLUSTRATIVE — NOT FOR CLINICAL DECISIONS. Plausible orders of magnitude for a demo,
+# not estimates. `range` is the ± fraction sampled to draw the uncertainty band.
+range: 0.35
+horizon_months: 60
+
+DIABETES:
+  states: [prediabetes, diabetes, complications]
+  outcome: complications
+  outcome_label: "Diabetes complications"
+  start:
+    prediabetes: [1.0, 0.0, 0.0]
+    diabetes range: [0.0, 1.0, 0.0]
+    high: [0.0, 1.0, 0.0]
+  untreated:      # yearly: from -> to : probability
+    prediabetes->diabetes: 0.11
+    diabetes->complications: 0.09
+  in_care:
+    prediabetes->diabetes: 0.05
+    diabetes->complications: 0.035
+
+COLORECTAL:
+  states: [no_significant_lesion, early_lesion, advanced_disease]
+  outcome: advanced_disease
+  outcome_label: "Advanced colorectal disease"
+  start:
+    positive: [0.60, 0.35, 0.05]
+  untreated:
+    early_lesion->advanced_disease: 0.22
+  in_care:
+    early_lesion->advanced_disease: 0.02
+
+BREAST:
+  states: [benign, early_cancer, advanced_cancer]
+  outcome: advanced_cancer
+  outcome_label: "Advanced breast cancer"
+  start:
+    recall: [0.90, 0.09, 0.01]
+    suspicious: [0.70, 0.28, 0.02]
+    highly suspicious: [0.05, 0.85, 0.10]
+  untreated:
+    early_cancer->advanced_cancer: 0.30
+  in_care:
+    early_cancer->advanced_cancer: 0.03

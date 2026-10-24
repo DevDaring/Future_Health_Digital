@@ -1,0 +1,119 @@
+# Synthetic Gulf-city population. ALL VALUES ARE ILLUSTRATIVE.
+# They are chosen to look plausible for a demo, not estimated from real data.
+# Change them here; nothing in code hard-codes these numbers.
+
+nationality_groups:          # share of population
+  Emirati: 0.19
+  Indian: 0.27
+  Pakistani: 0.12
+  Bangladeshi: 0.07
+  Filipino: 0.10
+  Arab expatriate: 0.13
+  Western: 0.06
+  Other: 0.06
+
+language_by_nationality:     # P(preferred language | nationality)
+  Emirati: {ar: 1.0}
+  Indian: {ml: 0.45, hi: 0.40, en: 0.15}
+  Pakistani: {ur: 0.9, en: 0.1}
+  Bangladeshi: {bn: 0.95, en: 0.05}
+  Filipino: {tl: 0.8, en: 0.2}
+  Arab expatriate: {ar: 1.0}
+  Western: {en: 1.0}
+  Other: {en: 0.7, hi: 0.15, ar: 0.15}
+
+occupation_by_nationality:
+  Emirati: {office: 0.70, healthcare: 0.10, retail: 0.10, driver: 0.10}
+  Indian: {construction: 0.30, driver: 0.15, retail: 0.15, office: 0.22, hospitality: 0.10, domestic: 0.04, healthcare: 0.04}
+  Pakistani: {construction: 0.40, driver: 0.30, retail: 0.15, office: 0.10, hospitality: 0.05}
+  Bangladeshi: {construction: 0.50, driver: 0.15, retail: 0.15, hospitality: 0.15, domestic: 0.05}
+  Filipino: {domestic: 0.35, hospitality: 0.25, healthcare: 0.20, retail: 0.15, office: 0.05}
+  Arab expatriate: {office: 0.50, retail: 0.20, healthcare: 0.10, driver: 0.10, hospitality: 0.10}
+  Western: {office: 0.85, healthcare: 0.15}
+  Other: {office: 0.40, retail: 0.20, hospitality: 0.20, driver: 0.10, construction: 0.10}
+
+shift_by_occupation:
+  construction: {night: 0.35, rotating: 0.25, split: 0.10, day: 0.30}
+  driver: {rotating: 0.50, night: 0.20, day: 0.30}
+  domestic: {split: 0.50, day: 0.50}
+  hospitality: {rotating: 0.50, night: 0.20, split: 0.20, day: 0.10}
+  healthcare: {rotating: 0.50, day: 0.40, night: 0.10}
+  retail: {split: 0.40, day: 0.40, rotating: 0.20}
+  office: {day: 0.95, rotating: 0.05}
+
+basic_insurance_by_occupation:   # P(basic) for non-Emiratis; Emiratis are Thiqa
+  construction: 0.85
+  domestic: 0.85
+  driver: 0.80
+  hospitality: 0.60
+  retail: 0.55
+  healthcare: 0.25
+  office: 0.15
+
+low_literacy_by_occupation:      # P(literacy=1), P(literacy=2); remainder is 3
+  construction: [0.45, 0.40]
+  domestic: [0.40, 0.45]
+  driver: [0.30, 0.50]
+  hospitality: [0.12, 0.48]
+  retail: [0.12, 0.48]
+  healthcare: [0.03, 0.27]
+  office: [0.03, 0.27]
+
+male_share_by_occupation:
+  construction: 0.99
+  driver: 0.97
+  domestic: 0.08
+  hospitality: 0.55
+  retail: 0.55
+  healthcare: 0.35
+  office: 0.55
+
+home_areas: [Al Khalidiyah, Al Reem Island, Mussafah, Khalifa City, Al Shamkha, Baniyas,
+             Mohammed Bin Zayed City, Al Bateen, Al Mushrif, Al Wahda, ICAD]
+far_areas: [Mussafah, ICAD, Baniyas, Al Shamkha]   # labour-camp style, longer trips
+
+abnormal:
+  diabetes_rate_base: 0.19        # P(abnormal HbA1c) before adjustments
+  diabetes_rate_south_asian: 0.10 # added for South Asian groups
+  diabetes_rate_age_per_decade: 0.03
+  fit_positive_rate: 0.06         # age >= 45
+  breast_abnormal_rate: 0.11      # women >= 40
+
+# ---------------------------------------------------------------------------
+# Ground-truth behaviour model (hidden from the ML; drives labels and the twin)
+#   logit(p_return_no_outreach) = b0 - a1*lang_mismatch - a2*night_or_rotating
+#       - a3*distance_km/10 - a4*prior_no_shows - a5*basic + a6*severity_level
+#       - a7*low_literacy - a8*no_free_weekdays
+# ---------------------------------------------------------------------------
+behaviour:
+  b0: 2.05
+  a1_lang_mismatch: 1.0
+  a2_night_or_rotating: 0.85
+  a3_distance_per_10km: 0.25
+  a4_prior_no_show: 0.35
+  a5_basic_insurance: 0.6
+  a6_severity_level: 0.45
+  a7_low_literacy: 0.55
+  a8_no_free_weekdays: 0.45
+  days_since_result_decay: 0.01     # logit drop per day the result sits unexplained
+  # Treatment effect of an outreach action (logit scale). Heterogeneous by design.
+  e_base: 0.15                      # any personal contact
+  e_lang_match: 0.85                # language-matched contact fixes a mismatch
+  e_shift_slot: 0.75                # evening/Friday slot for night/rotating shifts
+  e_friday_no_free_weekdays: 0.75   # Friday slot for people with no free weekdays
+  e_near_home: 0.45                 # near-home slot for people > 15 km away
+  e_cost_info: 0.55                 # cost information for basic insurance
+  e_call_low_literacy: 0.35         # phone/in-person for literacy level 1
+  e_channel_other: 0.10
+  e_sms: 0.05                       # generic SMS
+  unmatched_language_damp: 0.35     # effect kept when the message is in the wrong language
+  high_cost_barrier_damp: 0.30      # basic + >30 km + no cost info: outreach barely helps
+  chronic_no_show_damp: 0.25        # >=3 prior no-shows: one contact rarely changes behaviour
+  chronic_no_show_threshold: 3
+  return_time_mean_days: 18         # mean days to attend if the person will return
+  contacted_return_time_mean_days: 9
+  sla_horizon_days: 60              # "returned" = attended within this window in history
+
+history:
+  n_loops: 36000                    # simulated historical abnormal results (for training)
+  treat_share: 0.5                  # randomised outreach trial

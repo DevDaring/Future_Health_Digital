@@ -1,0 +1,9 @@
+{
+  "name": "WASL · وصل — care navigator",
+  "short_name": "WASL",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090f1e",
+  "theme_color": "#0b1324",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

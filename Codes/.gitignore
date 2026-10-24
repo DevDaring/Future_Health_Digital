@@ -1,0 +1,23 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+**/.env.local
+*.pem
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+backend/artifacts/*.pkl
+backend/artifacts/ACTIVE
+# node
+node_modules/
+frontend/dist/
+# misc
+.DS_Store
+*.log
