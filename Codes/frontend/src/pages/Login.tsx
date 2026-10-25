@@ -21,9 +21,9 @@ function LoopHero() {
   // An animated loop that closes: result → understood → booked → attended.
   const steps = ["Result", "Explained", "Understood", "Booked", "Attended"];
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[340px]">
+    <div className="relative mx-auto aspect-[32/22] w-full max-w-[480px]">
       <div className="absolute inset-8 rounded-full bg-teal/20 blur-3xl" />
-      <svg viewBox="-20 -10 240 220" className="relative h-full w-full">
+      <svg viewBox="-60 -10 320 220" overflow="visible" className="relative h-full w-full">
         <defs>
           <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="rgb(45 212 191)" />
@@ -46,7 +46,7 @@ function LoopHero() {
               <motion.circle cx={x} cy={y} r="7" fill="rgb(234 179 88)" initial={{ scale: 0.4, opacity: 0.4 }}
                 animate={{ scale: [0.4, 1, 1], opacity: [0.4, 1, 1] }} transition={{ duration: 2.6, delay: (i / steps.length) * 2.6, repeat: Infinity, repeatDelay: 1.4 }} />
               <text x={100 + 97 * Math.cos(a)} y={100 + 97 * Math.sin(a) + 3} textAnchor={Math.cos(a) > 0.3 ? "start" : Math.cos(a) < -0.3 ? "end" : "middle"}
-                fill="rgba(255,255,255,0.7)" fontSize="9" fontWeight="700">
+                fill="rgba(255,255,255,0.75)" fontSize="10.5" fontWeight="700">
                 {s}
               </text>
             </g>
