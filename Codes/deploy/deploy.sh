@@ -17,7 +17,10 @@ install -m 755 "$REPO/deploy/host/run.sh" "$REPO/deploy/host/stop.sh" "$REPO/dep
 "$DEST/backend/.venv/bin/pip" install -q -e "$DEST/backend"
 
 (cd "$REPO/frontend" && npm run build --silent)
-rsync -a --delete "$REPO/frontend/dist/" "$DEST/web/"
+rsync -a --delete --exclude assets/ "$REPO/frontend/dist/" "$DEST/web/"
+# Keep superseded hashed chunks so tabs opened before this deploy still load their pages; prune after 14 days.
+rsync -a "$REPO/frontend/dist/assets/" "$DEST/web/assets/"
+find "$DEST/web/assets" -type f -mtime +14 -delete
 
 cd "$DEST/backend"
 export WASL_ENV_FILE="$DEST/.env"

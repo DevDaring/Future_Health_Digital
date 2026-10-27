@@ -21,9 +21,15 @@ wasl.koushikdeb.com {
 		Cross-Origin-Opener-Policy "same-origin"
 		-Server
 	}
-	@immutable path /assets/*
+	@immutable {
+		path /assets/*
+		file {
+			root /home/Debz/Host/wasl/web
+		}
+	}
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
-	@html path / /index.html
+	# index.html and every SPA route must revalidate, or a stale page asks for chunks a newer deploy replaced
+	@html not path /assets/* /api/*
 	header @html Cache-Control "no-cache"
 	handle /api/* {
 		request_body {
@@ -37,6 +43,11 @@ wasl.koushikdeb.com {
 				keepalive 60s
 			}
 		}
+	}
+	# a missing chunk is a real 404, never index.html served as JavaScript
+	handle /assets/* {
+		root * /home/Debz/Host/wasl/web
+		file_server
 	}
 	handle {
 		root * /home/Debz/Host/wasl/web
