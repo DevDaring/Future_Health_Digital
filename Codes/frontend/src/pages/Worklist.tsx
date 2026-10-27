@@ -151,7 +151,7 @@ export default function Worklist() {
                     <td className="px-3"><SeverityBadge severity={r.severity} /></td>
                     <td className="px-3"><StateBadge state={r.state} understood={r.understood} /></td>
                     <td className="px-3">
-                      <span className={clsx("tabular text-xs font-bold", { bad: "text-bad", warn: "text-warn", ok: "text-ink-2" }[slaTone(r.sla_days_left)])}>
+                      <span className={clsx("tabular whitespace-nowrap text-xs font-bold", { bad: "text-bad", warn: "text-warn", ok: "text-ink-2" }[slaTone(r.sla_days_left)])}>
                         {r.sla_days_left < 0 ? `${Math.abs(r.sla_days_left).toFixed(0)} d over` : `${r.sla_days_left.toFixed(0)} d left`}
                       </span>
                     </td>
