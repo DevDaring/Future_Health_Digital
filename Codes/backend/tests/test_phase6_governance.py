@@ -107,3 +107,18 @@ def test_navigator_sees_assigned_only_and_masked_pii(client, tokens, personas):
 def test_unauthenticated_is_rejected(client):
     assert client.get("/api/worklist").status_code == 401
     assert client.post("/api/auth/login", json={"username": "DevTest", "password": "wrong"}).status_code == 401
+
+
+def test_consent_search_finds_patients_off_the_worklist(client, tokens, db):
+    from sqlalchemy import select
+
+    from app.models import CareLoop, Patient
+
+    booked = db.scalars(select(Patient).join(CareLoop, CareLoop.patient_id == Patient.id)
+                        .where(CareLoop.state.in_(["BOOKED", "ATTENDED", "CLOSED"]))).first()
+    assert booked is not None
+    r = client.get(f"/api/patients/search?q={booked.code}", headers=tokens["coordinator"]).json()
+    assert [i["patient_code"] for i in r["items"]] == [booked.code]
+    r = client.get("/api/patients/search?q=ramesh", headers=tokens["coordinator"]).json()
+    assert r["items"] and r["items"][0]["persona"] == "ramesh"
+    assert client.get("/api/patients/search?q=%25%25", headers=tokens["coordinator"]).json()["items"] == []

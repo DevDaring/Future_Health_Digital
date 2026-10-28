@@ -11,17 +11,17 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.api.common import paginate
+from app.api.common import mask_name, paginate
 from app.db import get_db
 from app.fairness.metrics import GROUP_COLUMNS, fairness_metrics
 from app.llm.factory import provider_name
 from app.loop_engine import audit, service
 from app.ml.registry import load_active
-from app.models import CareLoop, Consent, LoopEvent, ModelRegistry, Patient, ReviewItem, User
+from app.models import CareLoop, Consent, LoopEvent, ModelRegistry, Patient, PatientIdentity, ReviewItem, User
 from app.schemas import ConsentIn, DecideIn
 from app.security import require
 
@@ -133,6 +133,27 @@ def decide(item_id: uuid.UUID, body: DecideIn, db: DB, user: Annotated[User, Dep
 
 
 # --------------------------------------------------------------------- consent
+
+@router.get("/patients/search")
+def search_patients(db: DB, user: Annotated[User, Depends(require("worklist"))], q: str = Query(..., min_length=2, max_length=60),
+                    size: int = Query(8, ge=1, le=50)) -> dict[str, Any]:
+    """Consent belongs to the person, so search every patient, not only those with an open loop on the worklist."""
+    like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    stmt = (select(Patient.id, Patient.code, Patient.persona, PatientIdentity.full_name)
+            .join(PatientIdentity, PatientIdentity.patient_id == Patient.id)
+            .where(or_(PatientIdentity.full_name.ilike(like, escape="\\"), Patient.code.ilike(like, escape="\\")))
+            .order_by(Patient.persona.is_(None), Patient.code))
+    if user.role == "navigator":
+        stmt = stmt.where(Patient.id.in_(select(CareLoop.patient_id).where(CareLoop.assigned_to == user.id)))
+    ql, items = q.lower(), []
+    for pid, code, persona, full in db.execute(stmt.limit(200)):
+        name = mask_name(full, user.role)
+        if ql in name.lower() or ql in code.lower():  # never match on the part of a name this role cannot see
+            items.append({"patient_id": str(pid), "patient_code": code, "display_name": name, "persona": persona})
+            if len(items) == size:
+                break
+    return {"items": items}
+
 
 @router.get("/consents/{patient_id}")
 def get_consents(patient_id: uuid.UUID, db: DB, user: Annotated[User, Depends(require("worklist"))]) -> dict[str, Any]:

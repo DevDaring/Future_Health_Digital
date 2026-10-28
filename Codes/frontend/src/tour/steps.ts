@@ -173,12 +173,13 @@ export const STEPS: TourStep[] = [
   {
     id: "roi",
     title: "10 · Impact, and the path to a pilot",
-    body: "Per 1,000 abnormal results: +{extra} loops closed; outreach cost per extra loop {cost}; {lo}–{hi} late-stage cases avoided per year at 20,000 results (illustrative). Pilot: one clinic, one program, 90 days, FHIR-ready.",
+    body: "{policy}, per 1,000 abnormal results: +{extra} loops closed; outreach cost per extra loop {cost} (fairness costs a little: plain WASL uplift was {costPlain} in step 8); {lo}–{hi} late-stage cases avoided per year at 20,000 results (illustrative). Pilot: one clinic, one program, 90 days, FHIR-ready.",
     target: "roi",
     route: () => "/roi",
     prepare: async () => {
-      const r = await get<{ extra_loops_per_1000: number; outreach_cost_per_extra_loop: number | null; late_stage_avoided: { low: number; high: number } }>("/roi?policy=wasl_uplift_fair");
-      return { extra: num(r.extra_loops_per_1000), cost: `AED ${num(r.outreach_cost_per_extra_loop)}`, lo: num(r.late_stage_avoided.low), hi: num(r.late_stage_avoided.high) };
+      type Roi = { policy_label: string; extra_loops_per_1000: number; outreach_cost_per_extra_loop: number | null; late_stage_avoided: { low: number; high: number } };
+      const [r, plain] = await Promise.all([get<Roi>("/roi?policy=wasl_uplift_fair"), get<Roi>("/roi?policy=wasl_uplift")]);
+      return { policy: `With ${r.policy_label}`, extra: num(r.extra_loops_per_1000), cost: `AED ${num(r.outreach_cost_per_extra_loop)}`, costPlain: `AED ${num(plain.outreach_cost_per_extra_loop)}`, lo: num(r.late_stage_avoided.low), hi: num(r.late_stage_avoided.high) };
     },
   },
 ];

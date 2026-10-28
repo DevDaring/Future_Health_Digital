@@ -231,8 +231,8 @@ function ConsentTab() {
   const inv = useInvalidate();
   const search = useQuery({
     queryKey: ["consent-search", q],
-    queryFn: () => get<{ items: { patient_id: string; display_name: string; patient_code: string; persona: string | null }[] }>(`/worklist?budget=2000&size=8&show_all=true&q=${encodeURIComponent(q)}`),
-    enabled: q.length >= 2,
+    queryFn: () => get<{ items: { patient_id: string; display_name: string; patient_code: string; persona: string | null }[] }>(`/patients/search?size=8&q=${encodeURIComponent(q.trim())}`),
+    enabled: q.trim().length >= 2,
   });
   const c = useQuery({
     queryKey: ["consent", pid],
@@ -251,6 +251,7 @@ function ConsentTab() {
               </button>
             </li>
           ))}
+          {search.data && !search.data.items.length && <li className="px-1 text-xs text-ink-3">No patient matches “{q.trim()}”.</li>}
         </ul>
       </Card>
       <Card title="Consent center" subtitle="Revoking outreach consent immediately stops all navigator messages." icon={<UserCheck size={16} />}>
