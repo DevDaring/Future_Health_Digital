@@ -169,6 +169,19 @@ def _cache_key(provider: str, r: Rendered, lang: str, literacy: int, fault: str 
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+# Emergency messages never wait on (or depend on) a language model: the clinician-approved
+# text is sent as is, in the patient's language when an approved translation exists.
+APPROVED_ONLY = {"urgent_care", "ai_paused"}
+
+
+def _approved(r: Rendered, lang: str) -> PipelineResult | None:
+    if r.key not in APPROVED_ONLY or (lang != "en" and not r.fixture_text):
+        return None
+    final = r.text_en if lang == "en" else r.fixture_text or r.text_en
+    return PipelineResult(r.text_en, r.text_en, final, r.text_en, 1.0, True, [], True, False, final,
+                          "approved_translation" if lang != "en" else "checked", "clinician-approved")
+
+
 def prepare(db: Session, loop: CareLoop, items: list[Rendered], lang: str) -> list[tuple[PipelineResult, str | None]]:
     """Run the pipeline for several messages (parallel, cached). Returns (result, refusal)."""
     literacy = loop.patient.literacy_level
@@ -180,6 +193,10 @@ def prepare(db: Session, loop: CareLoop, items: list[Rendered], lang: str) -> li
     todo: list[int] = []
     keys = [_cache_key(getattr(provider, "name", "mock"), r, lang, literacy, fault) for r in items]
     for i, k in enumerate(keys):
+        fixed = _approved(items[i], lang)
+        if fixed is not None:
+            out[i] = (fixed, None)
+            continue
         hit = db.get(LLMCache, k)
         if hit is not None:
             out[i] = (PipelineResult(**hit.value), None)

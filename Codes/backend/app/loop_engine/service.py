@@ -61,6 +61,11 @@ def escalate(
 ) -> Escalation:
     """Open an escalation. Red flags also move the loop to ESCALATED and pause the AI."""
     esc = Escalation(loop_id=loop.id, reason=reason, status="open", notes=notes, detail=detail or {})
+    if reason in {"red_flag", "urgent_result"}:
+        from app.loop_engine.ownership import clinician_on_duty
+
+        doc = clinician_on_duty(db)
+        esc.assigned_to = doc.id if doc else None
     db.add(esc)
     if pause_navigator:
         loop.navigator_paused = True

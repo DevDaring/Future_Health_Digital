@@ -37,13 +37,14 @@ export function JudgeModeButton() {
       <button className="btn bg-gradient-to-r from-sand to-amber-500 text-white shadow-soft hover:brightness-110" onClick={() => setOpen(true)} data-tour="judge-mode">
         <Gavel size={16} /> <span className="hidden sm:inline">Judge Mode</span>
       </button>
-      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Judge Mode — a 3-minute guided tour">
+      <Modal open={open} onClose={() => !busy && setOpen(false)} title="Judge Mode — a 4-minute guided tour">
         <p className="text-sm text-ink-2">
-          One click resets the demo data (same seed → identical numbers), then walks through all ten screens. Each step runs the real action — a Malayalam
-          conversation, a red-flag escalation, a 5-policy twin run — and fills the narration with live numbers from the API.
+          One click resets the demo data (same seed → identical numbers; results you added are removed), then walks through 13 steps. Each step runs the
+          real action — a Malayalam conversation written back to the case record, a red-flag escalation, a 5-policy twin run, adding new results, a
+          documented closure — and fills the narration with live numbers from the API.
         </p>
         <ol className="mt-4 grid grid-cols-2 gap-1.5 text-xs text-ink-2">
-          {["Command Center", "Funnel", "Uplift worklist", "Why + What would help", "Malayalam chat + teach-back", "Translation QA catch", "Red flag → nurse", "Policy Twin", "Fairness + audit", "ROI + pilot"].map((s, i) => (
+          {["Command Center", "Funnel", "Uplift worklist", "Why + What would help", "Malayalam chat + teach-back", "Chat → case record + owner", "Translation QA catch", "Red flag → nurse", "Policy Twin", "Fairness + audit", "Add your own results", "Documented closure", "ROI + pilot"].map((s, i) => (
             <li key={s} className="rounded-lg bg-bg px-2 py-1.5"><strong className="text-ink">{i + 1}.</strong> {s}</li>
           ))}
         </ol>

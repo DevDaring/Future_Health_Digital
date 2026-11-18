@@ -137,7 +137,7 @@ export default function Login() {
             <button className="btn-primary mt-4 w-full" disabled={!!busy} onClick={() => void login(JURY.username, JURY.password, "jury")}>
               {busy === "jury" ? <Spinner /> : <ShieldCheck size={16} />} Enter as jury <ArrowRight size={16} />
             </button>
-            <p className="mt-2 text-[11px] text-ink-2">Full access, including Judge Mode (a guided 3-minute tour with live numbers).</p>
+            <p className="mt-2 text-[11px] text-ink-2">Full access, including Judge Mode (a guided 4-minute tour with live numbers).</p>
           </motion.div>
 
           <form onSubmit={submit} className="mt-6 space-y-3">

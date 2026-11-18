@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app import clock
 from app.config import get_settings
-from app.loop_engine import audit
+from app.loop_engine import audit, ownership
 from app.models import Appointment, CareLoop, Consent, Patient, PatientIdentity, ScreeningEvent
 from app.synth.population import classify
 
@@ -76,8 +76,8 @@ def service_request(loop: CareLoop) -> dict[str, Any]:
     }
 
 
-def task(loop: CareLoop) -> dict[str, Any]:
-    return {
+def task(loop: CareLoop, closure: Any = None) -> dict[str, Any]:
+    out = {
         "resourceType": "Task",
         "id": str(loop.id),
         "status": TASK_STATUS.get(loop.state, "requested"),
@@ -92,6 +92,21 @@ def task(loop: CareLoop) -> dict[str, Any]:
         "input": [{"type": {"text": "uplift"}, "valueDecimal": round(loop.uplift or 0, 4)},
                   {"type": {"text": "p_dropoff"}, "valueDecimal": round(loop.risk_dropoff or 0, 4)}],
     }
+    if loop.screening.facility:
+        out["requester"] = {"display": loop.screening.facility}
+    if loop.owner is not None:
+        out["owner"] = {"reference": f"Practitioner/{loop.owner.id}", "display": f"{loop.owner.display_name} ({loop.owner.role})"}
+    if loop.state == "CLOSED" and closure is not None:
+        out["output"] = [
+            {"type": {"text": "outcome"}, "valueString": closure.outcome},
+            {"type": {"text": "seen-by"}, "valueString": closure.seen_by},
+            {"type": {"text": "summary"}, "valueString": closure.summary},
+            {"type": {"text": "next-step"}, "valueString": closure.next_step},
+            {"type": {"text": "patient-informed"}, "valueBoolean": closure.patient_informed},
+            {"type": {"text": "report-shared-with"}, "valueString": closure.report_shared_with},
+        ]
+        out["executionPeriod"] = {"start": _iso(loop.screening.resulted_at), "end": _iso(closure.closed_at)}
+    return out
 
 
 def appointment(ap: Appointment, loop: CareLoop) -> dict[str, Any]:
@@ -165,14 +180,18 @@ def import_bundle(db: Session, bundle: dict[str, Any]) -> list[CareLoop]:
         if sev_cat is None:
             continue  # normal result: no loop
         resulted = datetime.fromisoformat(res.get("effectiveDateTime", datetime.now(UTC).isoformat()).replace("Z", "+00:00"))
+        performer = (res.get("performer") or [{}])[0].get("display")
         se = ScreeningEvent(patient_id=p.id, program=program, test_code=test, value_numeric=value_num, value_text=value_text,
-                            severity=sev_cat[0], category=sev_cat[1], resulted_at=resulted, source="fhir_import")
+                            severity=sev_cat[0], category=sev_cat[1], resulted_at=resulted, source="fhir_import",
+                            facility=(performer or "FHIR import")[:120])
         db.add(se)
         db.flush()
         loop = CareLoop(screening_event_id=se.id, patient_id=p.id, state="RESULT_RECEIVED",
                         sla_due_at=resulted + timedelta(days=get_settings().sla_days(sev_cat[0])))
         db.add(loop)
         db.flush()
+        db.refresh(loop)
+        ownership.assign_default_owner(db, loop)
         audit.append_event(db, loop.id, None, "RESULT_RECEIVED", "system:fhir", f"Imported Observation {res.get('id')}", {"source": "fhir"}, clock.now(db))
         loops.append(loop)
     db.flush()

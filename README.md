@@ -7,14 +7,20 @@ Many people who get an abnormal screening result — a high HbA1c, a positive st
 > **WASL does not diagnose.** It explains a screening result, helps the person act on it, and escalates to a human.
 
 ### Try it
-**https://wasl.koushikdeb.com** — jury login **User `DevTest` · Password `DevTest11`**, then press **Judge Mode** for a 3-minute guided tour. Each step runs live: a Malayalam conversation, a red-flag escalation, a 5-policy digital-twin run.
+**https://wasl.koushikdeb.com** — jury login **User `DevTest` · Password `DevTest11`**, then press **Judge Mode** for a 4-minute guided tour. Each step runs live: a Malayalam conversation written back to the case record, a red-flag escalation, a 5-policy digital-twin run, your own results, a documented closure.
+
+**Try it with your own data:** open **Add Results**, type a screening result or upload a CSV (template provided), then switch the Command Center to **Results you added** and watch the funnel, flags and closures update.
 
 | | |
 |---|---|
 | ![Command Center](Results/screenshots/02-command-center.png) | ![Worklist](Results/screenshots/03-worklist.png) |
 | ![Translation QA](Results/screenshots/05-translation-qa-imran.png) | ![Policy Twin](Results/screenshots/06-policy-twin.png) |
+| ![Add your own results](Results/screenshots/14-add-results.png) | ![Case record, owner and documented closure](Results/screenshots/17-documented-closure.png) |
 
 ### What makes it different
+* **Bring your own results.** Add a result from a form or upload a CSV (up to 200 rows). Each abnormal result opens a case with an owner and a deadline at once; urgent results flag a clinician; overdue ones flag an SLA breach; normal results are reported and open nothing.
+* **One named owner, one documented closure.** Every case has an accountable owner from the moment the result arrives (hand-overs are audited). A case can only close with a documented outcome: who saw the patient, when, what happened, the next step, that the patient was told, and which provider received the report. The FHIR Task carries the same outcome to other providers.
+* **The chat writes back to the case record.** Barrier named, teach-back passed, visit booked, red flag raised, refusal, request for a human: each appears in the case record automatically, linked to its audit hash.
 * **Uplift, not just risk.** A T-learner predicts *who outreach will actually help*, and ranks the daily call list by that, with an optional fairness floor per language group. Under the same 200 calls, 60 people who rarely respond are swapped for 60 whose outcome a call changes.
 * **The AI is checked before it speaks.** Every translated message is back-translated and checked. An independent LLM judge reviews meaning, and an exact check compares numbers and test names. If either fails, the patient gets the clinician-approved translation and a human reviews it.
 * **Teach-back, red flags, consent.** The person explains the result in their own words before booking. Emergencies reach a nurse instantly (UAE 999 advice) and pause the AI. Revoking consent stops outreach.
@@ -29,7 +35,7 @@ Many people who get an abnormal screening result — a high HbA1c, a positive st
 * The closure gap between language groups narrows from **40.9 % to 15.1 %**.
 * Drop-off risk AUROC **0.767**.
 * Uplift ranking beats risk ranking against the known true effect: AUUC 0.180 vs 0.156.
-* 64 backend + 8 frontend tests; backend coverage 88 %.
+* 75 backend + 8 frontend tests; backend coverage 89 %.
 
 ### Repository
 ```

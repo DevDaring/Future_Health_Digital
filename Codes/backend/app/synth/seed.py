@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app import clock
 from app.config import get_settings
 from app.db import Base
-from app.loop_engine import audit
+from app.loop_engine import audit, ownership
 from app.loop_engine.sla import check_breaches
 from app.models import (
     ApprovedTranslation,
@@ -40,6 +40,7 @@ from app.models import (
     ContentTemplate,
     DemoState,
     Escalation,
+    LoopClosure,
     Patient,
     PatientIdentity,
     ScreeningEvent,
@@ -57,11 +58,24 @@ TZ = ZoneInfo("Asia/Dubai")
 DEMO_PASSWORD = "demo1234"
 
 
+# Where the synthetic screening tests were done (the provider that ordered the result).
+SCREENING_SITES = {
+    "DIABETES": ["Mussafah Mobile Screening Van", "Al Khalidiyah Healthcare Centre", "Khalifa City Primary Care"],
+    "COLORECTAL": ["Khalifa City Primary Care", "Al Khalidiyah Healthcare Centre"],
+    "BREAST": ["Al Rahba Hospital Imaging", "Khalifa City Primary Care"],
+}
+
+
 def did(kind: str, key: Any) -> uuid.UUID:
     return uuid.uuid5(NS, f"{kind}:{key}")
 
 
 # ----------------------------------------------------------------------- reset
+
+# Checked LLM outputs are keyed by provider, template version, exact text and language, so they
+# stay valid across a reset; keeping them makes the first Judge Mode chat after a reset fast.
+KEEP_ON_RESET = {"llm_cache"}
+
 
 def wipe(db: Session) -> None:
     """Delete all rows (FK-safe). Keeps the schema.
@@ -71,6 +85,8 @@ def wipe(db: Session) -> None:
     DELETE only takes row locks, so readers keep seeing the old data until we commit.
     """
     for table in reversed(Base.metadata.sorted_tables):
+        if table.name in KEEP_ON_RESET:
+            continue
         db.execute(delete(table))
     clock._cache.clear()
     db.flush()
@@ -228,6 +244,7 @@ def seed_loops(db: Session, pop: pd.DataFrame, seed: int, now: datetime, head: a
     summary = []
     screenings: list[ScreeningEvent] = []
     loops: list[CareLoop] = []
+    closures: list[LoopClosure] = []
     pending_events: list[tuple[Any, ...]] = []
     for i, r in enumerate(res.itertuples(index=False)):
         age_days = float(rng.uniform(0.5, 120))
@@ -237,6 +254,7 @@ def seed_loops(db: Session, pop: pd.DataFrame, seed: int, now: datetime, head: a
             ScreeningEvent(
                 id=se_id, patient_id=r.patient_id, program=r.program, test_code=r.test_code, value_numeric=r.value_numeric,
                 value_text=r.value_text, severity=r.severity, category=r.category, resulted_at=resulted, source="synthetic",
+                facility=SCREENING_SITES[r.program][int(r.idx) % len(SCREENING_SITES[r.program])],
             )
         )
         loop_id = did("loop", f"{r.idx}:{r.program}")
@@ -266,6 +284,16 @@ def seed_loops(db: Session, pop: pd.DataFrame, seed: int, now: datetime, head: a
                         if disengaged < 0.03 and age_days > t_eng + 2:
                             events.append((t_eng + 2, "DECLINED"))
         state = events[-1][1]
+        if state == "CLOSED":
+            # Historical loops closed before WASL still carry their documented outcome.
+            site = next(c["name"] for c in CLINICS if r.program in c["programs"])
+            closures.append(LoopClosure(
+                loop_id=loop_id, outcome="referral_completed" if int(r.idx) % 10 < 7 else "treatment_started", seen_by=site,
+                visit_date=resulted + timedelta(days=t_return), summary=f"Follow-up after abnormal {r.test_code} completed; letter on file.",
+                next_step="Routine care with family doctor", patient_informed=True,
+                report_shared_with=SCREENING_SITES[r.program][int(r.idx) % len(SCREENING_SITES[r.program])],
+                closed_by=None, closed_by_name="Clinic records (before WASL)", closed_at=resulted + timedelta(days=t_return + 2),
+            ))
         loop = CareLoop(
             id=loop_id, screening_event_id=se_id, patient_id=r.patient_id, state=state, sla_due_at=sla_due,
             last_contact_at=resulted + timedelta(days=t_notify) if len(events) > 1 else None,
@@ -293,6 +321,8 @@ def seed_loops(db: Session, pop: pd.DataFrame, seed: int, now: datetime, head: a
     db.flush()
     db.add_all(loops)
     db.flush()
+    db.add_all(closures)
+    db.flush()
     for ev in pending_events:
         audit.append_event(db, *ev, head=head)
     db.flush()
@@ -312,7 +342,8 @@ def seed_personas(db: Session, now: datetime, head: audit.ChainHead, nav: User) 
         severity, category = classify(r["program"], r["value_numeric"], r["value_text"])  # type: ignore[misc]
         resulted = now - timedelta(days=p["days_ago"], hours=3)
         se_id = did("screening", f"persona:{p['persona']}")
-        db.add(ScreeningEvent(id=se_id, patient_id=pid, severity=severity, category=category, resulted_at=resulted, source="synthetic", **r))
+        db.add(ScreeningEvent(id=se_id, patient_id=pid, severity=severity, category=category, resulted_at=resulted, source="synthetic",
+                              facility=SCREENING_SITES[r["program"]][0], **r))
         db.flush()
         loop_id = did("loop", f"persona:{p['persona']}")
         db.add(
@@ -354,6 +385,8 @@ def seed_all(db: Session, seed: int | None = None, n: int | None = None) -> dict
     for lid in rng.choice(open_ids, size=min(150, len(open_ids)), replace=False):
         db.get(CareLoop, lid).assigned_to = users["nav@wasl.demo"].id  # type: ignore[union-attr]
     db.flush()
+    # Every other loop gets a named owner by the default rule (no case is ever unowned).
+    ownership.assign_all_unowned(db, use_navigators=False)
 
     check_breaches(db)
     # Older breaches were handled before today: keep only the last 5 days' breaches open.

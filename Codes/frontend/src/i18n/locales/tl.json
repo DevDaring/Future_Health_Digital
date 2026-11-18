@@ -25,7 +25,8 @@
   "km_away": "km ang layo",
   "reminder_note": "Ipapaalala namin sa iyo bago ang iyong pagbisita.",
   "your_result": "Ang iyong resulta",
-  "secure_link": "Ligtas na link · mag-e-expire sa loob ng 14 na araw"
+  "secure_link": "Ligtas na link · mag-e-expire sa loob ng 14 na araw",
+  "care_team_sees": "Makikita ng iyong care team ang booking na ito sa iyong record."
  },
  "quick": {
   "qr_night": "Nagtatrabaho ako sa gabi",

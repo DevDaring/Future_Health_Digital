@@ -237,7 +237,7 @@ export default function PatientChat() {
               <div className="flex items-center gap-2 text-sm font-bold"><CheckCircle2 size={18} /> {t("ui.booked")}</div>
               <div className="mt-1 text-lg font-extrabold" dir="ltr">{st.booked.label}</div>
               <div className="text-sm opacity-90" dir="ltr">{st.booked.clinic}</div>
-              <div className="mt-2 text-xs opacity-80">{t("ui.reminder_note")}</div>
+              <div className="mt-2 text-xs opacity-80">{t("ui.reminder_note")} {t("ui.care_team_sees")}</div>
             </motion.div>
           )}
           {sending && (

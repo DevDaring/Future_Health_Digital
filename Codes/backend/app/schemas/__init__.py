@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -35,6 +36,17 @@ class TransitionIn(BaseModel):
 
 class AssignIn(BaseModel):
     user_id: uuid.UUID | None = None
+    note: str = Field("", max_length=300)
+
+
+class CloseIn(BaseModel):
+    outcome: Literal["referral_completed", "treatment_started", "no_further_action", "seen_elsewhere"]
+    seen_by: str = Field(min_length=2, max_length=160)
+    visit_date: datetime
+    summary: str = Field(min_length=10, max_length=2000)
+    next_step: str = Field("", max_length=200)
+    patient_informed: bool
+    report_shared_with: str = Field(min_length=2, max_length=160)
 
 
 class OutreachIn(BaseModel):

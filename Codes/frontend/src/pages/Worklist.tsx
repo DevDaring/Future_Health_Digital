@@ -120,10 +120,10 @@ export default function Worklist() {
           <EmptyState title="Nothing to show" hint="No open loops match these filters." />
         ) : (
           <div className="-mx-5 overflow-x-auto scrollbar-thin">
-            <table className="w-full min-w-[1180px] text-sm">
+            <table className="w-full min-w-[1300px] text-sm">
               <thead>
                 <tr className="border-b border-line text-left">
-                  {["", "#", "Patient", "Result", "Severity", "State", "SLA", "P(drop-off)", "Uplift", "Top reason"].map((h) => (
+                  {["", "#", "Patient", "Result", "Severity", "State", "Owner", "SLA", "P(drop-off)", "Uplift", "Top reason"].map((h) => (
                     <th key={h} className="label px-3 py-2 first:pl-5">{h === "Uplift" ? <span className="inline-flex items-center gap-1">Uplift <ArrowDownUp size={10} /></span> : h}</th>
                   ))}
                 </tr>
@@ -150,6 +150,7 @@ export default function Worklist() {
                     </td>
                     <td className="px-3"><SeverityBadge severity={r.severity} /></td>
                     <td className="px-3"><StateBadge state={r.state} understood={r.understood} /></td>
+                    <td className="whitespace-nowrap px-3 text-xs">{r.owner ? <><div className="font-semibold">{r.owner.name}</div><div className="capitalize text-ink-3">{r.owner.role}</div></> : <span className="text-bad">unowned</span>}</td>
                     <td className="px-3">
                       <span className={clsx("tabular whitespace-nowrap text-xs font-bold", { bad: "text-bad", warn: "text-warn", ok: "text-ink-2" }[slaTone(r.sla_days_left)])}>
                         {r.sla_days_left < 0 ? `${Math.abs(r.sla_days_left).toFixed(0)} d over` : `${r.sla_days_left.toFixed(0)} d left`}

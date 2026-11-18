@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import {
-  ArrowLeft, BrainCircuit, CalendarCheck, ExternalLink, HeartHandshake, MessagesSquare, QrCode, Send, ShieldCheck, Sparkles, UserCheck, Workflow,
+  ArrowLeft, BrainCircuit, CalendarCheck, ClipboardCheck, ClipboardList, ExternalLink, HeartHandshake, MessagesSquare, QrCode, Send, ShieldCheck, Sparkles, UserCheck, UserRound, Workflow,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router-dom";
 import { post } from "../api/client";
 import { useInvalidate, useLoop, usePatientTwin } from "../api/hooks";
 import type { TranslationCheck } from "../api/types";
+import { CaseRecord, ClosureForm, ClosureView, OwnerPanel } from "../components/caseRecord";
 import { CheckDetail, PatientTwinChart, Timeline, Transcript, WhatWouldHelp, WhyBars } from "../components/loop";
 import { Card, Chip, EmptyState, ErrorState, LangChip, LoadingBlock, Modal, SeverityBadge, Spinner, StateBadge } from "../components/ui";
 import { PROGRAM_LABEL, STATE_LABEL, pct, resultLabel } from "../lib/format";
@@ -25,6 +26,7 @@ export default function LoopDetail() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [check, setCheck] = useState<TranslationCheck | null>(null);
+  const [closing, setClosing] = useState(false);
 
   if (q.isLoading) return <LoadingBlock rows={10} />;
   if (q.error) return <ErrorState error={q.error} retry={() => void q.refetch()} />;
@@ -70,6 +72,7 @@ export default function LoopDetail() {
               <LangChip lang={p.language} />
               <StateBadge state={L.state} understood={L.understood} />
               {L.navigator_paused && <Chip tone="bad">AI paused — awaiting nurse</Chip>}
+              {L.owner && <Chip tone="indigo" icon={<UserRound size={11} />}>Owner: {L.owner.name}</Chip>}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
               <span>{p.code}</span>
@@ -96,12 +99,17 @@ export default function LoopDetail() {
             {d.conversations.length > 0 && !outreach && (
               <span className="chip self-center bg-info-soft text-info"><MessagesSquare size={12} /> conversation active ({d.conversations[0].language})</span>
             )}
-            {user?.role !== "navigator" && (
-              <button className="btn-ghost" onClick={() => void act("assign", () => post(`/loops/${L.id}/assign`, {}))}>
-                <UserCheck size={15} /> Assign to me
+            {L.assigned_to !== user?.id && !["CLOSED", "DECLINED"].includes(L.state) && (
+              <button className="btn-ghost" onClick={() => void act("assign", () => post(`/loops/${L.id}/assign`, { note: "Took ownership" }))}>
+                <UserCheck size={15} /> Take ownership
               </button>
             )}
-            <select className="input !w-auto" value="" aria-label="Transition"
+            {d.can_close && (
+              <button className={L.state === "ATTENDED" ? "btn-primary" : "btn-ghost"} onClick={() => setClosing(true)} data-tour="close-loop">
+                <ClipboardCheck size={15} /> Document outcome &amp; close
+              </button>
+            )}
+            {d.allowed_transitions.length > 0 && <select className="input !w-auto" value="" aria-label="Transition"
               onChange={(e) => {
                 const to = e.target.value;
                 if (!to) return;
@@ -110,18 +118,26 @@ export default function LoopDetail() {
               }}>
               <option value="">Move to…</option>
               {d.allowed_transitions.map((s) => <option key={s} value={s}>{STATE_LABEL[s]}</option>)}
-            </select>
+            </select>}
           </div>
         </div>
         {err && <div className="relative mt-3 rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad">{err}</div>}
+        {L.state === "ATTENDED" && (
+          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">
+            <span><strong>Visit attended.</strong> The loop stays open until the owner documents the outcome.</span>
+            <button className="font-bold underline" onClick={() => setClosing(true)}>Document it now</button>
+          </div>
+        )}
 
         <ol className="relative mt-6 grid grid-cols-7 gap-1" aria-label="Loop progress">
           {STEPS.map((s, i) => {
-            const done = reached.has(s) || (currentIdx >= 0 && i <= currentIdx);
+            // Steps the case actually went through are solid; steps it skipped (e.g. a patient seen at another provider) are hatched.
+            const done = reached.has(s);
+            const skipped = !done && currentIdx >= 0 && i < currentIdx;
             return (
-              <li key={s} className="flex flex-col items-center gap-1.5 text-center">
-                <div className={clsx("h-1.5 w-full rounded-full", done ? "bg-gradient-to-r from-teal to-indigo" : "bg-line")} />
-                <span className={clsx("text-[10px] font-semibold sm:text-[11px]", done ? "text-ink" : "text-ink-3")}>{STATE_LABEL[s]}</span>
+              <li key={s} className="flex flex-col items-center gap-1.5 text-center" title={skipped ? "Skipped" : undefined}>
+                <div className={clsx("h-1.5 w-full rounded-full", done ? "bg-gradient-to-r from-teal to-indigo" : skipped ? "bg-[repeating-linear-gradient(90deg,rgb(var(--line))_0_4px,transparent_4px_8px)]" : "bg-line")} />
+                <span className={clsx("text-[10px] font-semibold sm:text-[11px]", done ? "text-ink" : "text-ink-3")}>{STATE_LABEL[s]}{skipped ? " · skipped" : ""}</span>
               </li>
             );
           })}
@@ -160,6 +176,21 @@ export default function LoopDetail() {
         </div>
 
         <div className="space-y-6">
+          <Card title="Case owner" subtitle="One named person is accountable from result to closure" icon={<UserRound size={16} />} tour="case-owner">
+            <OwnerPanel d={d} onChanged={() => inv("loop", "worklist", "intake-recent")} />
+          </Card>
+
+          {d.closure && (
+            <Card title="Closure record" subtitle="Documented outcome: the referral is complete" icon={<ClipboardCheck size={16} />} tour="closure-record">
+              <ClosureView c={d.closure} />
+            </Card>
+          )}
+
+          <Card title="Case record" subtitle="Everything that happened, including what the patient did in the chat: written back automatically and hash-chained."
+            icon={<ClipboardList size={16} />} tour="case-record">
+            <CaseRecord items={d.case_record} />
+          </Card>
+
           <Card title="Profile" subtitle="Pseudonymous — identity lives in a separate table" icon={<HeartHandshake size={16} />}>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               {[
@@ -251,6 +282,9 @@ export default function LoopDetail() {
             </a>
           </div>
         )}
+      </Modal>
+      <Modal open={closing} onClose={() => setClosing(false)} title="Document the outcome and close the loop">
+        {closing && <ClosureForm d={d} onDone={() => { setClosing(false); inv("loop", "worklist", "kpis", "feed", "escalations", "intake-recent", "funnel"); }} />}
       </Modal>
       <Modal open={!!check} onClose={() => setCheck(null)} title="Translation QA — back-translation verification" wide>
         {check && <CheckDetail c={check} />}

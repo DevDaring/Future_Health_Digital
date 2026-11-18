@@ -1,24 +1,44 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { get, post } from "./client";
 import type {
-  DemoState, Escalation, FairnessGroup, Funnel, Kpis, LoopDetail, PatientTwin, Policy, TwinRun, Worklist,
+  DemoState, Escalation, FairnessGroup, Funnel, Kpis, LoopDetail, LoopRow, Owner, PatientTwin, Policy, TwinRun, Worklist,
 } from "./types";
 
-export const useKpis = () => useQuery({ queryKey: ["kpis"], queryFn: () => get<Kpis>("/dashboard/kpis"), refetchInterval: 10_000 });
-export const useFunnel = (program?: string) =>
-  useQuery({ queryKey: ["funnel", program], queryFn: () => get<Funnel>(`/dashboard/funnel${program ? `?program=${program}` : ""}`) });
-export const useBreaches = () =>
-  useQuery({ queryKey: ["breaches"], queryFn: () => get<{ by_program: { program: string; routine: number; high: number; urgent: number }[] }>("/dashboard/breaches") });
-export const useFeed = () =>
+/** "added" limits dashboards to results a reviewer or a connected system added. */
+export type Scope = "all" | "added";
+const sq = (scope: Scope, first: boolean) => (scope === "added" ? `${first ? "?" : "&"}scope=added` : "");
+const qs = (params: Record<string, string | undefined>) => {
+  const p = Object.entries(params).filter((e): e is [string, string] => !!e[1]);
+  return p.length ? `?${new URLSearchParams(p).toString()}` : "";
+};
+
+export const useKpis = (scope: Scope = "all") =>
+  useQuery({ queryKey: ["kpis", scope], queryFn: () => get<Kpis>(`/dashboard/kpis${sq(scope, true)}`), refetchInterval: scope === "added" ? 4_000 : 10_000 });
+export const useFunnel = (program?: string, scope: Scope = "all") =>
   useQuery({
-    queryKey: ["feed"],
-    queryFn: () => get<{ events: { id: string; seq: number; loop_id: string; patient_code: string; persona: string | null; from_state: string | null; to_state: string; actor: string; reason: string; created_at: string; hash: string }[] }>("/dashboard/feed?limit=12"),
+    queryKey: ["funnel", program, scope],
+    queryFn: () => get<Funnel>(`/dashboard/funnel${qs({ program, scope: scope === "added" ? "added" : undefined })}`),
+    refetchInterval: scope === "added" ? 4_000 : false,
+  });
+export const useBreaches = (scope: Scope = "all") =>
+  useQuery({ queryKey: ["breaches", scope], queryFn: () => get<{ by_program: { program: string; routine: number; high: number; urgent: number }[] }>(`/dashboard/breaches${sq(scope, true)}`) });
+export const useStaff = () => useQuery({ queryKey: ["staff"], queryFn: () => get<{ items: (Owner & { languages: string[] })[] }>("/users/staff"), staleTime: 60_000 });
+export const useIntakeRecent = () =>
+  useQuery({
+    queryKey: ["intake-recent"],
+    queryFn: () => get<{ items: (LoopRow & { open_flags: string[]; closure: { outcome_label: string } | null })[]; total: number }>("/intake/recent?size=100"),
+    refetchInterval: 4_000,
+  });
+export const useFeed = (scope: Scope = "all") =>
+  useQuery({
+    queryKey: ["feed", scope],
+    queryFn: () => get<{ events: { id: string; seq: number; loop_id: string; patient_code: string; persona: string | null; from_state: string | null; to_state: string; actor: string; reason: string; created_at: string; hash: string }[] }>(`/dashboard/feed?limit=12${sq(scope, false)}`),
     refetchInterval: 5_000,
   });
-export const useEscalations = (status = "open", reason?: string) =>
+export const useEscalations = (status = "open", reason?: string, scope: Scope = "all") =>
   useQuery({
-    queryKey: ["escalations", status, reason],
-    queryFn: () => get<{ items: Escalation[]; total: number; counts: Record<string, number> }>(`/escalations?status=${status}&size=30${reason ? `&reason=${reason}` : ""}`),
+    queryKey: ["escalations", status, reason, scope],
+    queryFn: () => get<{ items: Escalation[]; total: number; counts: Record<string, number> }>(`/escalations?status=${status}&size=30${reason ? `&reason=${reason}` : ""}${sq(scope, false)}`),
     refetchInterval: 5_000,
   });
 export const useWorklist = (policy: Policy, budget: number, page: number, program?: string, q?: string) =>

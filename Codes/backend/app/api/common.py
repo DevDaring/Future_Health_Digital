@@ -89,9 +89,32 @@ def loop_row(loop: CareLoop, name: str, now: Any, score: RiskScore | None = None
         "priority": loop.priority_score,
         "top_reason": top,
         "assigned_to": str(loop.assigned_to) if loop.assigned_to else None,
+        "owner": {"id": str(loop.owner.id), "name": loop.owner.display_name, "role": loop.owner.role} if loop.owner else None,
+        "next_action": NEXT_ACTION.get(loop.state, ""),
+        "source": se.source,
+        "facility": se.facility,
         "navigator_paused": loop.navigator_paused,
         "resulted_at": clock.as_utc(se.resulted_at).isoformat(),
     }
+
+
+# Results that a reviewer or a connected system added (not the simulated population).
+ADDED_SOURCES = ("manual", "csv_upload", "fhir_import")
+
+NEXT_ACTION = {
+    "RESULT_RECEIVED": "Start outreach to the patient",
+    "NOTIFIED": "Wait for the patient to open the link, or call",
+    "ENGAGED": "Help the patient book a visit",
+    "UNDERSTOOD": "Help the patient book a visit",
+    "BOOKED": "Confirm the visit happened",
+    "ATTENDED": "Document the outcome and close the loop",
+    "NO_SHOW": "Re-engage and rebook",
+    "UNREACHABLE": "Try another channel or a home visit",
+    "BREACHED": "Overdue: contact today and escalate",
+    "ESCALATED": "A human must review the escalation",
+    "CLOSED": "Done: outcome documented",
+    "DECLINED": "Informed refusal recorded: clinician review",
+}
 
 
 def paginate(items: list[Any], page: int, size: int) -> dict[str, Any]:

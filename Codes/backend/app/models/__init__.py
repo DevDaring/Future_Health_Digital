@@ -10,7 +10,15 @@ from app.models.content import (
     TranslationCheck,
 )
 from app.models.governance import AppSetting, DemoState, FairnessSnapshot, ModelRegistry, ReviewItem, SimRun
-from app.models.loops import Appointment, CareLoop, Escalation, LoopEvent, RiskScore, ScreeningEvent
+from app.models.loops import (
+    Appointment,
+    CareLoop,
+    Escalation,
+    LoopClosure,
+    LoopEvent,
+    RiskScore,
+    ScreeningEvent,
+)
 from app.models.people import Clinic, ClinicSlot, Consent, Patient, PatientIdentity, User
 
 __all__ = [
@@ -27,6 +35,7 @@ __all__ = [
     "Escalation",
     "FairnessSnapshot",
     "LLMCache",
+    "LoopClosure",
     "LoopEvent",
     "Message",
     "ModelRegistry",

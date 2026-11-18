@@ -115,6 +115,10 @@ class Tasks:
     def understand(self, text: str, lang: str, step: str, program: str) -> dict[str, Any]:
         """English meaning + intent + barrier + red flag for one patient message."""
         lexicon_hit = red_flag_lexicon_match(text)
+        if lexicon_hit and not self.is_mock:
+            # Safety fast path: a known danger phrase needs no model call before help is sent.
+            return {"answer_en": f"[{lexicon_hit} red-flag phrase in the patient's own words] {text}", "intent": "red_flag",
+                    "barrier": "none", "red_flag": True, "red_flag_reason": f"lexicon:{lexicon_hit}", "red_flag_source": "lexicon"}
         if self.is_mock:
             english = self.to_english(text, lang)
             res = mock_understand(english)

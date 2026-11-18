@@ -1,7 +1,7 @@
-// Judge Mode: 10 steps, ~3 minutes. Every number shown comes live from the API — the
+// Judge Mode: 13 steps, ~4 minutes. Every number shown comes live from the API — the
 // text below is only templates filled with `fillTemplate`.
 import { get, post } from "../api/client";
-import type { ChatState, DemoState, Funnel, Kpis, LoopDetail, TwinRun, Worklist } from "../api/types";
+import type { ChatState, DemoState, Funnel, IntakeResult, Kpis, LoopDetail, TwinRun, Worklist } from "../api/types";
 import { LOCALES } from "../i18n";
 import { STATE_LABEL, num, pct } from "../lib/format";
 
@@ -112,8 +112,20 @@ export const STEPS: TourStep[] = [
     },
   },
   {
+    id: "case-record",
+    title: "6 · The chat writes back to the case record",
+    body: "Everything Ramesh did in the chat is now in his case record, each line linked to its audit hash: {items}. His case has one named owner, {owner}, and the next action is \"{next}\".",
+    target: "case-record",
+    route: (d) => `/loops/${d.ramesh}`,
+    prepare: async (d) => {
+      const l = await get<LoopDetail>(`/loops/${d.ramesh}`);
+      const fromChat = l.case_record.filter((c) => c.source === "patient_chat").map((c) => (c.kind === "barrier" ? `barrier: ${c.detail}` : c.label.toLowerCase()));
+      return { items: fromChat.join(" → ") || "—", owner: l.loop.owner ? `${l.loop.owner.name} (${l.loop.owner.role})` : "—", next: l.next_action };
+    },
+  },
+  {
     id: "imran",
-    title: "6 · The AI is checked before it speaks",
+    title: "7 · The AI is checked before it speaks",
     body: "Imran (Urdu): the machine translation turned his HbA1c into the wrong number ({issue}). The entity check caught it, the judge scored {score}, and he received the clinician-approved translation instead. The item is waiting in the human review queue.",
     target: "transcript",
     route: (d) => `/loops/${d.imran}`,
@@ -126,7 +138,7 @@ export const STEPS: TourStep[] = [
   },
   {
     id: "fatima",
-    title: "7 · Red flag → a human, instantly",
+    title: "8 · Red flag → a human, instantly",
     body: "Fatima wrote \"{msg}\". In {ms} ms WASL replied with urgent-care advice (call 999), opened a red-flag escalation, and paused the AI until a nurse acknowledges it. Press Acknowledge in the live feed.",
     target: "escalations",
     route: () => "/",
@@ -140,7 +152,7 @@ export const STEPS: TourStep[] = [
   },
   {
     id: "twin",
-    title: "8 · Policy Twin",
+    title: "9 · Policy Twin",
     body: "5,000 simulated patients × 5 policies, paired on the same random numbers. {best} closes {bestRate} of loops vs {none} with no outreach and {risk} with risk-ranked calls, at {cost} per extra closed loop (risk-ranked: {riskCost}). Allocation gap with the fairness floor: {fairAlloc} vs {upAlloc}. Sensitivity: {robust}.",
     target: "twin-results",
     route: () => "/twin",
@@ -161,7 +173,7 @@ export const STEPS: TourStep[] = [
   },
   {
     id: "governance",
-    title: "9 · Fairness & a tamper-evident audit trail",
+    title: "10 · Fairness & a tamper-evident audit trail",
     body: "{checked} hash-chained events re-verified: {valid}. In the twin, the closure gap between language groups shrinks from {gapNone} (no outreach) to {gapWasl} (WASL). Revoking consent stops the navigator immediately.",
     target: "verify-chain",
     route: () => "/fairness?tab=audit",
@@ -171,9 +183,47 @@ export const STEPS: TourStep[] = [
     },
   },
   {
+    id: "intake",
+    title: "11 · Now use your own results",
+    body: "The numbers so far are simulated, so try your own. We just added {n} results here: {list}. Each opened a case with a named owner at once; the urgent one raised a clinician flag. Type a result or upload a CSV, then switch the Command Center to \"Results you added\" and watch the funnel, flags and closures move.",
+    target: "added-table",
+    route: () => "/intake",
+    prepare: async () => {
+      const results = [
+        { name: "Sanjay Pillai", language: "ml", sex: "M", age: 52, test: "HbA1c", value: "10.4", facility: "Mussafah Mobile Screening Van", shift: "night" },
+        { name: "Maria Reyes", language: "tl", sex: "F", age: 56, test: "FIT", value: "positive", facility: "Khalifa City Primary Care", shift: "day" },
+        { name: "Ali Khan", language: "ur", sex: "M", age: 41, test: "HbA1c", value: "5.3", facility: "Mussafah Mobile Screening Van", shift: "rotating" },
+      ];
+      const r = await post<{ results: IntakeResult[] }>("/intake/results", { results });
+      const fit = r.results.find((x) => x.result?.startsWith("FIT") && x.loop_id);
+      const list = r.results
+        .map((x) => `${x.name} ${x.result} → ${x.status === "normal" ? "normal, no case" : `${x.severity}, owner ${x.owner}${x.flags?.includes("urgent_result") ? ", urgent flag" : ""}`}`)
+        .join("; ");
+      return { n: r.results.length, list, fitLoop: fit?.loop_id ?? null, fitName: fit?.name ?? "" };
+    },
+  },
+  {
+    id: "closure",
+    title: "12 · A loop closes only with a documented outcome",
+    body: "{name}'s positive stool test: seen by {seenBy}; \"{summary}\"; next step: {next}; patient told; report sent back to {sharedWith}. Only now is the loop CLOSED, and the FHIR Task carries the same outcome for other providers. Without these fields the system refuses to close.",
+    target: "closure-record",
+    route: (d) => (d.fitLoop ? `/loops/${d.fitLoop}` : "/intake"),
+    prepare: async (d) => {
+      if (!d.fitLoop) return {};
+      const body = {
+        outcome: "referral_completed", seen_by: "Sheikh Shakhbout Medical City, endoscopy", visit_date: new Date(Date.now() - 60_000).toISOString(),
+        summary: "Colonoscopy done: two small polyps removed, benign on pathology", next_step: "Repeat colonoscopy in 5 years",
+        patient_informed: true, report_shared_with: "Khalifa City Primary Care",
+      };
+      await post(`/loops/${d.fitLoop}/transition`, { to_state: "ATTENDED", reason: "Colonoscopy attended" });
+      await post(`/loops/${d.fitLoop}/close`, body);
+      return { name: d.fitName, seenBy: body.seen_by, summary: body.summary, next: body.next_step, sharedWith: body.report_shared_with };
+    },
+  },
+  {
     id: "roi",
-    title: "10 · Impact, and the path to a pilot",
-    body: "{policy}, per 1,000 abnormal results: +{extra} loops closed; outreach cost per extra loop {cost} (fairness costs a little: plain WASL uplift was {costPlain} in step 8); {lo}–{hi} late-stage cases avoided per year at 20,000 results (illustrative). Pilot: one clinic, one program, 90 days, FHIR-ready.",
+    title: "13 · Impact, and the path to a pilot",
+    body: "{policy}, per 1,000 abnormal results: +{extra} loops closed; outreach cost per extra loop {cost} (fairness costs a little: plain WASL uplift was {costPlain} in step 9); {lo}–{hi} late-stage cases avoided per year at 20,000 results (illustrative). Pilot: one clinic, one program, 90 days, FHIR-ready.",
     target: "roi",
     route: () => "/roi",
     prepare: async () => {

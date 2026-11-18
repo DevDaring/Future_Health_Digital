@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, JSONType
 from app.models.base import IdMixin, TimestampMixin
-from app.models.people import ClinicSlot, Patient
+from app.models.people import ClinicSlot, Patient, User
 
 
 class ScreeningEvent(IdMixin, TimestampMixin, Base):
@@ -25,7 +25,8 @@ class ScreeningEvent(IdMixin, TimestampMixin, Base):
     severity: Mapped[str] = mapped_column(String(10))  # routine | high | urgent
     category: Mapped[str] = mapped_column(String(40), default="")  # e.g. prediabetes, recall
     resulted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    source: Mapped[str] = mapped_column(String(20), default="synthetic")
+    source: Mapped[str] = mapped_column(String(20), default="synthetic")  # synthetic | manual | csv_upload | fhir_import
+    facility: Mapped[str | None] = mapped_column(String(120), nullable=True)  # provider that ran the screening test
 
 
 class CareLoop(IdMixin, TimestampMixin, Base):
@@ -50,6 +51,7 @@ class CareLoop(IdMixin, TimestampMixin, Base):
 
     patient: Mapped[Patient] = relationship(lazy="joined")
     screening: Mapped[ScreeningEvent] = relationship(lazy="joined")
+    owner: Mapped[User | None] = relationship(lazy="joined", foreign_keys=[assigned_to])
 
 
 Index("ix_care_loops_state", CareLoop.state)
@@ -99,6 +101,23 @@ class Appointment(IdMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(12), default="booked")
     match_reasons: Mapped[list[str]] = mapped_column(JSONType, default=list)
     slot: Mapped[ClinicSlot] = relationship(lazy="joined")
+
+
+class LoopClosure(IdMixin, TimestampMixin, Base):
+    """The documented outcome that closes a loop. A loop cannot reach CLOSED without one."""
+
+    __tablename__ = "loop_closures"
+    loop_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("care_loops.id", ondelete="CASCADE"), unique=True)
+    outcome: Mapped[str] = mapped_column(String(40))  # see app.loop_engine.closure.OUTCOMES
+    seen_by: Mapped[str] = mapped_column(String(160))  # provider that completed the referral
+    visit_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    next_step: Mapped[str] = mapped_column(String(200), default="")
+    patient_informed: Mapped[bool] = mapped_column(Boolean, default=False)
+    report_shared_with: Mapped[str] = mapped_column(String(160), default="")  # screening provider / family doctor
+    closed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    closed_by_name: Mapped[str] = mapped_column(String(120), default="")
+    closed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class Escalation(IdMixin, TimestampMixin, Base):

@@ -4,7 +4,7 @@ AI care navigation that **closes the screening-to-care loop**: every abnormal sc
 
 > **WASL does not diagnose.** It explains a screening result, helps the person act on it, and escalates to a human.
 
-**Live:** https://wasl.koushikdeb.com · **Jury login:** `DevTest` / `DevTest11` → press **Judge Mode** (top right) for a guided 3-minute tour with live numbers.
+**Live:** https://wasl.koushikdeb.com · **Jury login:** `DevTest` / `DevTest11` → press **Judge Mode** (top right) for a guided 4-minute tour with live numbers. **Add Results** lets you enter your own screening results (form or CSV) and watch them in the Command Center under **Results you added**.
 Built for the [Future Health Challenge](https://hack2skill.com/event/futurehealthchallenge/) — track *Population Health: Closing the Screening-to-Care Loop*.
 
 ## Quickstart
@@ -33,7 +33,7 @@ To use real models set `LLM_PROVIDER=anthropic` (+ `ANTHROPIC_API_KEY`, default 
 | M5 | **Command Center** | KPIs, funnel, SLA breaches, worklist, "Why this patient?" |
 | M6 | **Trust & Governance** | Fairness panel, model card, calibration, consent, PII firewall, review queue, audit verification |
 
-Highlights: uplift-based prioritisation under a call budget (with a fairness-constrained option) · back-translation verification with an independent LLM judge and an exact number/test-name check · teach-back · PII firewall · barrier-aware scheduling · counterfactual cards · Policy Twin with sensitivity analysis · hash-chained audit · ROI calculator · Judge Mode · FHIR R4 import/export.
+Highlights: bring-your-own results (form + CSV) · named case owner and documented closure (the only way to CLOSED) · chat outcomes written to the case record · uplift-based prioritisation under a call budget (with a fairness-constrained option) · back-translation verification with an independent LLM judge and an exact number/test-name check · teach-back · PII firewall · barrier-aware scheduling · counterfactual cards · Policy Twin with sensitivity analysis · hash-chained audit · ROI calculator · Judge Mode · FHIR R4 import/export.
 
 ## Architecture
 
@@ -66,10 +66,10 @@ Details: [docs/TECHNICAL.md](docs/TECHNICAL.md) · [docs/MODEL_CARD.md](docs/MOD
 | Language fairness | closure gap 40.9 % → 15.1 %; fairness floor cuts the allocation gap 15.8 % → 4.3 % |
 | Twin calibration | simulated 59.7 % vs historical 59.0 % no-outreach closure |
 | Sensitivity | WASL wins at ×0.5, ×1.0 and ×1.5 outreach effect |
-| Tests | 64 backend (Postgres) + 8 frontend; backend coverage 88 % |
+| Tests | 75 backend (Postgres) + 8 frontend; backend coverage 89 % |
 
-## Demo script (Judge Mode, ~3 min)
-1. Command Center → 2. Funnel → 3. Worklist Risk → Uplift → 4. Ramesh: Why + What would help → 5. Malayalam chat with teach-back and a Friday-evening slot → 6. Imran: translation QA catches 7.4 → 4.7 → 7. Fatima: red flag → nurse → 8. Policy Twin → 9. Fairness + verify audit chain → 10. ROI + pilot. Full script and judging-criteria mapping: [docs/PITCH.md](docs/PITCH.md).
+## Demo script (Judge Mode, ~4 min)
+1. Command Center → 2. Funnel → 3. Worklist Risk → Uplift → 4. Ramesh: Why + What would help → 5. Malayalam chat with teach-back and a Friday-evening slot → 6. The chat written back to Ramesh's case record, with his named owner → 7. Imran: translation QA catches 7.4 → 4.7 → 8. Fatima: red flag → nurse → 9. Policy Twin → 10. Fairness + verify audit chain → 11. Add your own results → 12. Documented closure → 13. ROI + pilot. Full script and judging-criteria mapping: [docs/PITCH.md](docs/PITCH.md).
 
 ## Screenshots
 See [`../Results/screenshots`](../Results/screenshots) — Command Center, Worklist, Loop detail, Translation QA, Policy Twin, Fairness, Model card, Content Studio, ROI, patient chat (Tagalog, Arabic RTL), dark mode.

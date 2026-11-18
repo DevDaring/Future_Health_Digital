@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.fhir import mappers
 from app.ml.score import score_open_loops
-from app.models import Appointment, CareLoop, Patient, ScreeningEvent, User
+from app.models import Appointment, CareLoop, LoopClosure, Patient, ScreeningEvent, User
 from app.security import require
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
@@ -34,7 +34,7 @@ def task(loop_id: uuid.UUID, db: DB, user: Staff) -> dict[str, Any]:
     loop = db.get(CareLoop, loop_id)
     if loop is None:
         raise HTTPException(404, "Loop not found")
-    return mappers.task(loop)
+    return mappers.task(loop, db.scalar(select(LoopClosure).where(LoopClosure.loop_id == loop.id)))
 
 
 @router.get("/ServiceRequest/{loop_id}")

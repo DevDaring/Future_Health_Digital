@@ -11,10 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.api.common import ensure_loop_access, identity_view, loop_row
+from app.api.common import NEXT_ACTION, ensure_loop_access, identity_view, loop_row
 from app.config import get_settings
 from app.db import get_db
-from app.loop_engine import audit, service
+from app.loop_engine import audit, closure, service
 from app.loop_engine.state_machine import InvalidTransition, can_transition
 from app.ml.score import score_open_loops
 from app.models import (
@@ -23,6 +23,7 @@ from app.models import (
     Consent,
     Conversation,
     Escalation,
+    LoopClosure,
     LoopEvent,
     Message,
     RiskScore,
@@ -33,7 +34,7 @@ from app.models import (
 from app.navigator import flow
 from app.navigator.content import LANG_NAMES, RTL
 from app.scheduling.slots import format_slot, suggest_slots
-from app.schemas import AssignIn, BookIn, OutreachIn, OutreachOut, TransitionIn
+from app.schemas import AssignIn, BookIn, CloseIn, OutreachIn, OutreachOut, TransitionIn
 from app.security import CurrentUser, can, require
 from app.twin.patient_twin import patient_twin
 
@@ -59,6 +60,68 @@ def message_view(m: Message) -> dict[str, Any]:
     }
 
 
+BARRIER_LABEL = {
+    "time": "work hours / time off", "cost": "cost worry", "transport": "travel distance", "fear": "fear or worry",
+    "language": "language", "family": "family duties", "none": "no barrier named",
+}
+
+
+def _source(actor: str) -> str:
+    if actor == "patient":
+        return "patient_chat"
+    if actor.startswith("user:"):
+        return "staff"
+    return "system"
+
+
+def case_record(events: list[LoopEvent]) -> list[dict[str, Any]]:
+    """What the case record says happened, in order. Outcomes captured in the patient chat
+    (barrier, teach-back, booking, red flag, refusal, request for a human) are written back
+    here automatically, each linked to its hash-chained audit event."""
+    out: list[dict[str, Any]] = []
+
+    def add(kind: str, label: str, detail: str, ev: LoopEvent, source: str) -> None:
+        out.append({"kind": kind, "label": label, "detail": detail, "source": source, "seq": ev.seq, "hash": ev.hash[:12],
+                    "at": clock.as_utc(ev.created_at).isoformat()})
+
+    for ev in events:
+        r = ev.reason or ""
+        if ev.from_state is None:
+            add("result", "Result received", r.replace("HBA1C ", "HbA1c ").replace("BIRADS ", "Mammogram BI-RADS "), ev, _source(ev.actor))
+        elif r.startswith("barrier:"):
+            b = str((ev.payload or {}).get("barrier", ""))
+            add("barrier", "Barrier recorded", BARRIER_LABEL.get(b, r.split(":", 1)[1].strip()), ev, "patient_chat")
+        elif ev.to_state == "UNDERSTOOD" and ev.from_state != "UNDERSTOOD":
+            add("teach_back", "Understood the result (teach-back passed)", "Patient explained the result back in their own words", ev, _source(ev.actor))
+        elif r.startswith("teach_back:"):
+            add("teach_back", "Teach-back not passed twice", "Human follow-up queued", ev, "patient_chat")
+        elif ev.to_state == "BOOKED" and ev.from_state != "BOOKED":
+            add("booked", "Visit booked", r.removeprefix("Booked ").strip(), ev, _source(ev.actor))
+        elif ev.to_state == "ESCALATED" and ev.from_state != "ESCALATED":
+            is_red = "red_flag" in r
+            add("red_flag" if is_red else "escalation", "Red flag raised in chat" if is_red else "Escalated", r.split(":", 1)[-1].strip(), ev,
+                "patient_chat" if is_red else _source(ev.actor))
+        elif r.startswith("escalation:") and "urgent_result" in r:
+            add("urgent", "Urgent result flagged", r.split("urgent_result", 1)[-1].strip(), ev, "system")
+        elif r.startswith("human_request:"):
+            add("human", "Patient asked for a human", r.split(":", 1)[1].strip(), ev, "patient_chat")
+        elif ev.to_state == "DECLINED" and ev.from_state != "DECLINED":
+            add("declined", "Informed refusal recorded", r, ev, _source(ev.actor))
+        elif r.startswith("assign:"):
+            add("owner", "Owner set", r.split(":", 1)[1].strip(), ev, _source(ev.actor))
+        elif ev.to_state == "ATTENDED" and ev.from_state != "ATTENDED":
+            add("attended", "Visit attended", r, ev, _source(ev.actor))
+        elif ev.to_state == "NO_SHOW" and ev.from_state != "NO_SHOW":
+            add("no_show", "Missed the visit", r, ev, _source(ev.actor))
+        elif ev.to_state == "CLOSED" and ev.from_state != "CLOSED":
+            add("closed", "Loop closed with documented outcome", r.removeprefix("Closed: "), ev, "staff")
+        elif ev.to_state == "BREACHED" and ev.from_state != "BREACHED":
+            add("breach", "SLA breached", r, ev, "system")
+        elif ev.from_state == "ESCALATED" and ev.to_state != "ESCALATED":
+            add("ack", "Escalation handled by a human", r, ev, _source(ev.actor))
+    return out
+
+
 @router.get("/{loop_id}")
 def loop_detail(loop_id: uuid.UUID, db: DB, user: Annotated[User, Depends(require("worklist"))]) -> dict[str, Any]:
     loop = ensure_loop_access(db.get(CareLoop, loop_id), user)
@@ -79,6 +142,7 @@ def loop_detail(loop_id: uuid.UUID, db: DB, user: Annotated[User, Depends(requir
     latest_consent: dict[str, dict[str, Any]] = {}
     for c in consents:
         latest_consent[c.scope] = {"granted": c.granted and c.revoked_at is None, "at": clock.as_utc(c.revoked_at or c.granted_at or c.created_at).isoformat()}
+    rec = db.scalar(select(LoopClosure).where(LoopClosure.loop_id == loop.id))
     p = loop.patient
     slots = [s.as_dict() for s in suggest_slots(db, loop, k=3)] if loop.state not in {"CLOSED", "DECLINED", "ATTENDED", "BOOKED"} else []
     return {
@@ -131,8 +195,14 @@ def loop_detail(loop_id: uuid.UUID, db: DB, user: Annotated[User, Depends(requir
             for e in escs
         ],
         "consents": latest_consent,
+        "case_record": case_record(list(events)),
+        "closure": closure.closure_view(rec),
+        "closure_outcomes": closure.OUTCOMES,
+        "next_action": NEXT_ACTION.get(loop.state, ""),
+        "can_close": loop.state in closure.CLOSABLE_AFTER_VISIT | closure.VISIT_FROM,
+        "screening_facility": loop.screening.facility,
         "slots": slots,
-        "allowed_transitions": [s for s in ("NOTIFIED", "ENGAGED", "UNDERSTOOD", "BOOKED", "ATTENDED", "CLOSED", "NO_SHOW", "UNREACHABLE", "DECLINED", "ESCALATED")
+        "allowed_transitions": [s for s in ("NOTIFIED", "ENGAGED", "UNDERSTOOD", "BOOKED", "ATTENDED", "NO_SHOW", "UNREACHABLE", "DECLINED", "ESCALATED")
                                 if can_transition(loop.state, s, loop.escalated_from)],
         "can_view_twin": can(user, "patient_twin"),
     }
@@ -141,6 +211,8 @@ def loop_detail(loop_id: uuid.UUID, db: DB, user: Annotated[User, Depends(requir
 @router.post("/{loop_id}/transition")
 def transition(loop_id: uuid.UUID, body: TransitionIn, db: DB, user: Annotated[User, Depends(require("loop_write"))]) -> dict[str, Any]:
     loop = ensure_loop_access(db.get(CareLoop, loop_id), user)
+    if body.to_state == "CLOSED":
+        raise HTTPException(409, "Closing a loop needs a documented outcome: use the closure form (POST /loops/{id}/close)")
     if body.to_state == "DECLINED" and "informed" not in body.reason.lower():
         raise HTTPException(422, "DECLINED requires a recorded informed refusal (reason must state the risk was explained)")
     try:
@@ -164,10 +236,31 @@ def assign(loop_id: uuid.UUID, body: AssignIn, db: DB, user: Annotated[User, Dep
     target = body.user_id or user.id
     if db.get(User, target) is None:
         raise HTTPException(404, "User not found")
+    if user.role == "navigator" and target != user.id:
+        raise HTTPException(403, "Navigators can only take ownership themselves")
+    new_owner = db.get(User, target)
+    if new_owner is None or new_owner.role not in {"admin", "coordinator", "clinician", "navigator"}:
+        raise HTTPException(404, "User not found")
+    prev = loop.owner.display_name if loop.owner else "nobody"
     loop.assigned_to = target
-    service.record_milestone(db, loop, "assign", _actor(user), f"Assigned to {db.get(User, target).display_name}")  # type: ignore[union-attr]
+    note = f" — {body.note.strip()}" if body.note.strip() else ""
+    service.record_milestone(db, loop, "assign", _actor(user), f"Owner changed from {prev} to {new_owner.display_name} ({new_owner.role}){note}")
     db.commit()
-    return {"id": str(loop.id), "assigned_to": str(target)}
+    return {"id": str(loop.id), "assigned_to": str(target), "owner": new_owner.display_name}
+
+
+@router.post("/{loop_id}/close")
+def close(loop_id: uuid.UUID, body: CloseIn, db: DB, user: Annotated[User, Depends(require("loop_write"))]) -> dict[str, Any]:
+    """Close the loop with a documented outcome (the only way to reach CLOSED)."""
+    loop = ensure_loop_access(db.get(CareLoop, loop_id), user)
+    try:
+        rec = closure.close_loop(db, loop, user, outcome=body.outcome, seen_by=body.seen_by, visit_date=body.visit_date,
+                                 summary=body.summary, next_step=body.next_step, patient_informed=body.patient_informed,
+                                 report_shared_with=body.report_shared_with)
+    except closure.ClosureError as exc:
+        raise HTTPException(exc.status, exc.detail) from exc
+    db.commit()
+    return {"id": str(loop.id), "state": loop.state, "closure": closure.closure_view(rec)}
 
 
 @router.post("/{loop_id}/outreach", response_model=OutreachOut)

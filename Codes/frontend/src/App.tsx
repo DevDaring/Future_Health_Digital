@@ -15,6 +15,7 @@ const PolicyTwin = lazyPage(() => import("./pages/PolicyTwin"));
 const Fairness = lazyPage(() => import("./pages/Fairness"));
 const ContentStudio = lazyPage(() => import("./pages/ContentStudio"));
 const Roi = lazyPage(() => import("./pages/Roi"));
+const AddResults = lazyPage(() => import("./pages/AddResults"));
 
 function Protected({ children }: { children: ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/fairness" element={page(<Fairness />)} />
           <Route path="/content" element={page(<ContentStudio />)} />
           <Route path="/roi" element={page(<Roi />)} />
+          <Route path="/intake" element={page(<AddResults />)} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <TourOverlay />

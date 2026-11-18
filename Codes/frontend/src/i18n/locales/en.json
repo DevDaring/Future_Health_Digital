@@ -25,7 +25,8 @@
   "km_away": "km away",
   "reminder_note": "We will remind you before your visit.",
   "your_result": "Your result",
-  "secure_link": "Secure link · expires in 14 days"
+  "secure_link": "Secure link · expires in 14 days",
+  "care_team_sees": "Your care team can see this booking in your record."
  },
  "quick": {
   "qr_night": "I work night shifts",

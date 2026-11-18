@@ -8,6 +8,10 @@
 Design note: the navigator runs teach-back *before* confirming the booking, so a loop
 moves ENGAGED → UNDERSTOOD → BOOKED in order. If teach-back fails twice we never block
 care: ENGAGED → BOOKED is allowed and a human navigator is asked to follow up.
+
+ATTENDED can also be recorded from any open state, for a patient seen at another
+provider. CLOSED is reached only through `closure.close_loop`, which requires a documented
+outcome (who saw the patient, the result, the next step, patient informed, report shared).
 """
 
 from __future__ import annotations
@@ -34,14 +38,14 @@ TERMINAL = {"CLOSED", "DECLINED"}
 OPEN_STATES = set(STATES) - TERMINAL - {"ATTENDED"}
 
 ALLOWED: dict[str, set[str]] = {
-    "RESULT_RECEIVED": {"NOTIFIED", "UNREACHABLE", "BOOKED"},
-    "NOTIFIED": {"ENGAGED", "UNREACHABLE", "DECLINED", "BOOKED"},
-    "ENGAGED": {"UNDERSTOOD", "BOOKED", "DECLINED", "UNREACHABLE"},
-    "UNDERSTOOD": {"BOOKED", "DECLINED"},
+    "RESULT_RECEIVED": {"NOTIFIED", "UNREACHABLE", "BOOKED", "ATTENDED"},
+    "NOTIFIED": {"ENGAGED", "UNREACHABLE", "DECLINED", "BOOKED", "ATTENDED"},
+    "ENGAGED": {"UNDERSTOOD", "BOOKED", "DECLINED", "UNREACHABLE", "ATTENDED"},
+    "UNDERSTOOD": {"BOOKED", "DECLINED", "ATTENDED"},
     "BOOKED": {"ATTENDED", "NO_SHOW", "DECLINED"},
     "ATTENDED": {"CLOSED"},
-    "NO_SHOW": {"ENGAGED", "BOOKED", "UNREACHABLE", "DECLINED"},
-    "UNREACHABLE": {"NOTIFIED", "ENGAGED"},
+    "NO_SHOW": {"ENGAGED", "BOOKED", "UNREACHABLE", "DECLINED", "ATTENDED"},
+    "UNREACHABLE": {"NOTIFIED", "ENGAGED", "ATTENDED"},
     "BREACHED": {"NOTIFIED", "ENGAGED", "UNDERSTOOD", "BOOKED", "ATTENDED", "UNREACHABLE", "DECLINED"},
     "CLOSED": set(),
     "DECLINED": set(),

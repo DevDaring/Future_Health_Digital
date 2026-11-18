@@ -42,11 +42,11 @@ flowchart LR
 
 | Module | Code | What it does |
 |---|---|---|
-| M1 Loop Engine | `backend/app/loop_engine/` | Validated transitions (`state_machine.py`), SLA breach job (`sla.py`, APScheduler, simulated clock), hash chain (`audit.py`) with per-loop and global chains, advisory-locked so concurrent writers never share a sequence number |
+| M1 Loop Engine | `backend/app/loop_engine/` | Validated transitions (`state_machine.py`), named case owner by default rule (`ownership.py`), documented closure as the only path to CLOSED (`closure.py`), SLA breach job (`sla.py`, APScheduler, simulated clock), hash chain (`audit.py`) with per-loop and global chains, advisory-locked so concurrent writers never share a sequence number |
 | M2 Risk + Uplift | `backend/app/ml/` | Features, calibrated risk, T-learner uplift, hand-written Qini/AUUC, SHAP reasons, counterfactual search over actionable levers, budgeted prioritisation with fairness floors |
 | M3 Navigator | `backend/app/navigator/`, `backend/app/llm/` | Deterministic dialogue FSM; LLM only for understanding free text and phrasing approved templates |
 | M4 Digital Twin | `backend/app/twin/` | SimPy care-pathway twin (5 policies, sensitivity, calibration) + Markov patient twin (clinician-only) |
-| M5 Command Center | `frontend/src/pages/` | KPIs, funnel from the audit log, worklist, loop detail, live escalations |
+| M5 Command Center | `frontend/src/pages/`, `backend/app/api/intake.py` | KPIs, funnel from the audit log, worklist, loop detail with case record and closure, live escalations; reviewer-added results (form / CSV) with a *Results you added* scope |
 | M6 Trust & Governance | `backend/app/fairness/`, `backend/app/api/governance.py` | Fairness metrics, model card, calibration, audit verify/export, consent, review queue |
 
 ## 3. One outgoing message, end to end
@@ -88,7 +88,8 @@ stateDiagram-v2
   ENGAGED --> BOOKED: teach-back failed twice (human follow-up queued)
   UNDERSTOOD --> BOOKED
   BOOKED --> ATTENDED
-  ATTENDED --> CLOSED
+  ATTENDED --> CLOSED: documented outcome (closure record)
+  ENGAGED --> ATTENDED: seen at another provider
   BOOKED --> NO_SHOW
   NO_SHOW --> ENGAGED
   RESULT_RECEIVED --> UNREACHABLE
@@ -101,6 +102,12 @@ stateDiagram-v2
   CLOSED --> [*]
   DECLINED --> [*]
 ```
+
+**Closure.** `CLOSED` is reachable only through `POST /loops/{id}/close`, which writes a `loop_closures` record (outcome, seen by, visit date, summary, next step, patient informed = true, report shared with) and the hash-chained transition in one transaction; the generic transition endpoint refuses `CLOSED`. Open escalations on the loop are resolved, and the FHIR Task gains `owner`, `requester` (screening provider) and `output` (the outcome).
+
+**Ownership.** Every loop gets an owner when it is created: urgent results → clinician, otherwise a navigator who speaks the patient's language, otherwise the coordinator. Hand-overs are audited with a reason; red-flag and urgent-result escalations are assigned to the clinician on duty.
+
+**Case record.** `GET /loops/{id}` returns `case_record`: the outcomes captured in the patient chat (barrier, teach-back, booking, red flag, refusal, request for a human) and by staff, each linked to its audit event.
 
 Design decision: the navigator runs **teach-back before confirming the booking**, so the loop moves ENGAGED → UNDERSTOOD → BOOKED in order. Care is never blocked on comprehension: after two failed attempts a human is queued and booking proceeds.
 
@@ -126,4 +133,4 @@ Design decision: the navigator runs **teach-back before confirming the booking**
 
 ## 7. Testing
 
-`make test` → 64 backend tests (pytest, Postgres) + Vitest. Coverage: total 88 %; `loop_engine`, `ml`, `navigator`, `llm`, `twin`, `fairness` all ≥ 70 %. Acceptance checks of every build phase are encoded as tests (`tests/test_phase*.py`).
+`make test` → 75 backend tests (pytest, Postgres) + Vitest. Coverage: total 89 %; `loop_engine`, `ml`, `navigator`, `llm`, `twin`, `fairness` all ≥ 70 %. Acceptance checks of every build phase are encoded as tests (`tests/test_phase*.py`).

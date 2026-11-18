@@ -22,6 +22,12 @@ export interface Kpis {
   sla_breaches: number;
   open_escalations: number;
   open_red_flags: number;
+  open_urgent_results: number;
+  unowned_open_loops: number;
+  awaiting_closure: number;
+  closed_loops: number;
+  closed_documented: number;
+  scope: "all" | "added";
   now: string;
   clock_offset_days: number;
 }
@@ -61,11 +67,58 @@ export interface LoopRow {
   priority: number;
   top_reason: string | null;
   assigned_to: string | null;
+  owner: Owner | null;
+  next_action: string;
+  source: string;
+  facility: string | null;
   navigator_paused: boolean;
   resulted_at: string;
   rank?: number | null;
   in_budget?: boolean;
   policy_score?: number;
+}
+
+export interface Owner {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+export interface CaseRecordEntry {
+  kind: string;
+  label: string;
+  detail: string;
+  source: "patient_chat" | "staff" | "system";
+  seq: number;
+  hash: string;
+  at: string;
+}
+
+export interface Closure {
+  id: string;
+  outcome: string;
+  outcome_label: string;
+  seen_by: string;
+  visit_date: string | null;
+  summary: string;
+  next_step: string;
+  patient_informed: boolean;
+  report_shared_with: string;
+  closed_by_name: string;
+  closed_at: string;
+}
+
+export interface IntakeResult {
+  row: number;
+  name?: string;
+  result?: string;
+  status: "loop_created" | "normal" | "error";
+  message: string;
+  loop_id?: string;
+  severity?: string;
+  category?: string;
+  owner?: string | null;
+  flags?: string[];
 }
 
 export interface Worklist {
@@ -188,6 +241,12 @@ export interface LoopDetail {
   slots: Slot[];
   allowed_transitions: string[];
   can_view_twin: boolean;
+  case_record: CaseRecordEntry[];
+  closure: Closure | null;
+  closure_outcomes: Record<string, string>;
+  next_action: string;
+  can_close: boolean;
+  screening_facility: string | null;
 }
 export interface PatientTwin {
   program: string;
@@ -229,6 +288,7 @@ export interface Escalation {
   program: string;
   severity: string;
   loop_state: string;
+  owner: string | null;
 }
 export interface TwinPolicyResult {
   policy: TwinPolicy;

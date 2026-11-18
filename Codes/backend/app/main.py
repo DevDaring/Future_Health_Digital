@@ -17,6 +17,7 @@ from app.api import (
     escalations,
     fhir,
     governance,
+    intake,
     loops,
     patient_chat,
     roi,
@@ -95,6 +96,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "llm_provider": provider_name(), "notice": NO_DIAGNOSIS}
 
 
-for r in (auth, dashboard, worklist, loops, patient_chat, escalations, twin, governance, content, roi, fhir, demo):
+for r in (auth, dashboard, worklist, loops, intake, patient_chat, escalations, twin, governance, content, roi, fhir, demo):
     api.include_router(r.router)
+api.include_router(auth.users_router)
 app.include_router(api)

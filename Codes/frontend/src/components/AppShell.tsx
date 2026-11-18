@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import {
-  Activity, BarChart3, BookOpenCheck, Clock3, FlaskConical, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Scale, Sparkles, Sun, X,
+  Activity, BarChart3, BookOpenCheck, Clock3, FilePlus2, FlaskConical, LayoutDashboard, ListOrdered, LogOut, Menu, Moon, Scale, Sparkles, Sun, X,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ export const NO_DIAGNOSIS = "WASL does not diagnose. It explains a screening res
 const NAV: { to: string; label: string; icon: ReactNode; roles: Role[]; tour?: string }[] = [
   { to: "/", label: "Command Center", icon: <LayoutDashboard size={18} />, roles: ["admin", "coordinator", "clinician", "navigator"] },
   { to: "/worklist", label: "Worklist", icon: <ListOrdered size={18} />, roles: ["admin", "coordinator", "clinician", "navigator"] },
+  { to: "/intake", label: "Add Results", icon: <FilePlus2 size={18} />, roles: ["admin", "coordinator", "clinician"] },
   { to: "/twin", label: "Policy Twin", icon: <FlaskConical size={18} />, roles: ["admin", "coordinator", "clinician"] },
   { to: "/fairness", label: "Fairness & Governance", icon: <Scale size={18} />, roles: ["admin", "coordinator", "clinician"] },
   { to: "/content", label: "Content Studio", icon: <BookOpenCheck size={18} />, roles: ["admin", "coordinator", "clinician", "navigator"] },
